@@ -1,0 +1,34 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to tuls.me
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 51.15.225.121
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /opt/oto-cli
+            git fetch origin main
+            git reset --hard origin/main
+            # oto-cli is installed editable via `pip install -e .` in oto-mcp's
+            # venv — no reinstall needed on pull unless deps change. We still
+            # restart oto-mcp so new modules (e.g. oto.tools.culture) are
+            # picked up by the registered MCP tools.
+            systemctl restart oto-mcp
+            sleep 3
+            systemctl is-active --quiet oto-mcp || (journalctl -u oto-mcp -n 50 --no-pager; exit 1)
+            journalctl -u oto-mcp -n 10 --no-pager
