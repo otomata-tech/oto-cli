@@ -31,6 +31,7 @@ oto/
 │   │   ├── browser.py          # linkedin, crunchbase, pappers, indeed, g2, google
 │   │   ├── reddit.py           # Reddit JSON API (subreddit, search, post)
 │   │   ├── sirene.py           # SIRENE API (search, get, stock)
+│   │   ├── culture.py          # Min. Culture open data (Opendatasoft) — sub-namespace `spectacle` (LES)
 │   │   ├── search.py           # facade: dispatches to serper or browser via config
 │   │   ├── serper.py           # direct Serper API (web, news, scrape, suggestions)
 │   │   ├── enrichment.py       # kaspr, hunter, lemlist
@@ -46,6 +47,7 @@ oto/
 │   │   ├── audio.py            # audio recording, transcription
 │   │   ├── gemini.py           # Gemini image generation
 │   │   ├── pdf.py              # markdown → PDF via pandoc + weasyprint (bundled template)
+│   │   ├── data.py             # Datastore (per-user Google Sheets via mcp.oto.ninja, OTO_API_KEY)
 │   │   ├── config.py           # config & secrets management
 │   │   └── skills.py           # Claude Code skills (enable/disable)
 │   └── tools/                  # API clients
@@ -55,10 +57,12 @@ oto/
 │       ├── reddit/              # Reddit JSON API (no auth)
 │       ├── whatsapp/           # Node.js bridge (whatsapp-web.js)
 │       ├── sirene/             # INSEE SIRENE API
+│       ├── culture/            # OpendatasoftClient générique + SpectacleClient (LES)
 │       ├── serper/             # Google search (web, news)
 │       ├── anthropic/          # Admin API (usage, costs)
 │       ├── pennylane/          # Accounting
 │       ├── attio/              # Attio CRM
+│       ├── datastore/          # HTTP client → mcp.oto.ninja /api/datastore/*
 │       ├── kaspr/, hunter/, lemlist/  # Enrichment & outreach
 │       ├── zohodesk/           # Zoho Desk (tickets/support)
 │       ├── pdf/                # pandoc+weasyprint wrapper, bundled CSS template (sober editorial)
@@ -155,9 +159,13 @@ oto skills enable oto-google       # enable one
 oto skills disable oto-pennylane   # disable one
 ```
 
-## Release
+## Deploy
 
-Package: `oto-cli` on PyPI. PyPI token in SOPS (`PYPI_TOKEN`).
+Push main déclenche `.github/workflows/deploy.yml` qui SSH tuls.me, `git reset --hard origin/main` dans `/opt/oto-cli`, puis `systemctl restart oto-mcp` (oto-cli est installé editable dans le venv d'oto-mcp ; sans restart les modules déjà importés ne pickent pas les nouveaux). Pas de release PyPI requise pour propager un nouveau connecteur.
+
+## Release PyPI (rare)
+
+Pour publier sur PyPI (autres utilisateurs hors infra Otomata). PyPI token in SOPS (`PYPI_TOKEN`).
 
 ```bash
 # Bump version in oto/__init__.py, then:
