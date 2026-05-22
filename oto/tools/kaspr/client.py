@@ -44,12 +44,25 @@ class KasprClient:
 
     def verify_key(self) -> Dict[str, Any]:
         """
-        Verify API key and get user info.
+        Validate the API key.
 
-        Returns:
-            User info with credits
+        Kaspr v2.0 n'expose pas d'endpoint `/user` ou `/me` — on vérifie
+        l'auth via un POST sentinel sur `/profile/linkedin` avec un id
+        manifestement introuvable. L'API authentifie avant de chercher le
+        profil donc on obtient 401 si la clé est mauvaise, 200 + body
+        vide sinon (vérifié live 22/05).
+
+        Returns: `{"valid": True}` si clé OK, sinon lève la HTTPError.
         """
-        return self._request("GET", "user")
+        self._request(
+            "POST", "profile/linkedin",
+            json={
+                "id": "__oto_verify_key__",
+                "name": "__verify__",
+                "dataToGet": [],
+            },
+        )
+        return {"valid": True}
 
     def enrich_linkedin(
         self,
