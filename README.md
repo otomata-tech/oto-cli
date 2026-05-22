@@ -84,8 +84,11 @@ oto google gmail-search "from:bob" -a myaccount
 # Browse LinkedIn
 oto browser linkedin profile https://linkedin.com/in/someone
 
-# French company data
+# French company data — INSEE SIRENE
 oto sirene search "fintech"
+
+# Enriched data via data.gouv recherche-entreprises (with --idcc filter by convention collective)
+oto sirene entreprises --idcc 1285,3090 --naf 90.01Z --dept 75
 ```
 
 ## Skills for AI agents
