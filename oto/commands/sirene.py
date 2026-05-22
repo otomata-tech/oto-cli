@@ -130,6 +130,7 @@ def entreprises(
     dept: Optional[str] = typer.Option(None, "--dept", help="Department code"),
     ca_min: Optional[int] = typer.Option(None, "--ca-min", help="Min turnover"),
     ca_max: Optional[int] = typer.Option(None, "--ca-max", help="Max turnover"),
+    idcc: Optional[str] = typer.Option(None, "--idcc", help="IDCC codes / conventions collectives (comma-separated, e.g. 1285,3090)"),
     limit: int = typer.Option(25, "--limit", "-n", help="Max results"),
 ):
     """Search companies with enriched data (directors, finances) via API Entreprises."""
@@ -138,6 +139,7 @@ def entreprises(
 
     client = EntreprisesClient()
     naf_list = naf.split(",") if naf else None
+    idcc_list = idcc.split(",") if idcc else None
 
     results = client.search(
         query=query,
@@ -145,6 +147,7 @@ def entreprises(
         departement=dept,
         ca_min=ca_min,
         ca_max=ca_max,
+        idcc=idcc_list,
         per_page=limit,
     )
     print(json.dumps(results, indent=2, ensure_ascii=False))

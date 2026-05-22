@@ -37,6 +37,7 @@ class EntreprisesClient:
         employees: List[str] = None,
         ca_min: int = None,
         ca_max: int = None,
+        idcc: List[str] = None,
         page: int = 1,
         per_page: int = 25,
     ) -> Dict[str, Any]:
@@ -52,6 +53,7 @@ class EntreprisesClient:
             employees: List of employee range codes
             ca_min: Minimum turnover (chiffre d'affaires)
             ca_max: Maximum turnover
+            idcc: List of IDCC codes (convention collective, e.g. ['1285', '3090'])
             page: Page number (1-based)
             per_page: Results per page (max 25)
 
@@ -83,11 +85,14 @@ class EntreprisesClient:
             params["ca_min"] = ca_min
         if ca_max:
             params["ca_max"] = ca_max
+        if idcc:
+            params["id_convention_collective"] = ",".join(idcc)
 
         # API requires at least one search parameter
         search_params = [
             "q", "activite_principale", "departement", "code_postal",
-            "commune", "tranche_effectif_salarie_entreprise", "ca_min", "ca_max"
+            "commune", "tranche_effectif_salarie_entreprise", "ca_min", "ca_max",
+            "id_convention_collective",
         ]
         if not any(p in params for p in search_params):
             raise ValueError(
