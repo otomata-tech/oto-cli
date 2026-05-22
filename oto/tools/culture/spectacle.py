@@ -37,11 +37,15 @@ def _quote(v: str) -> str:
 
 def _naf_clause(naf: str) -> str:
     """Build a NAF clause that handles the non-normalized field (dot optional,
-    label suffix optional)."""
+    label suffix optional).
+
+    Opendatasoft Explore v2.1 uses `*` as wildcard, NOT `%` — verified live
+    (prefix match with `%` silently returns 0 results on text fields).
+    """
     core = naf.strip().upper().replace(".", "")  # "90.01Z" → "9001Z"
     # Match both "9001Z..." and "90.01Z..." prefixes.
     dotted = core[:2] + "." + core[2:] if len(core) >= 3 else core
-    return f'(code_naf_ape like {_quote(core + "%")} OR code_naf_ape like {_quote(dotted + "%")})'
+    return f'(code_naf_ape like {_quote(core + "*")} OR code_naf_ape like {_quote(dotted + "*")})'
 
 
 class SpectacleClient:
@@ -83,9 +87,10 @@ class SpectacleClient:
             clauses.append(f"code_postal_siret={_quote(code_postal)}")
         if siren:
             # Match both SIRET (14) starting with this SIREN and bare SIREN.
-            clauses.append(f"siren_siret like {_quote(siren + '%')}")
+            # ODS wildcard = `*`, NOT `%` (the latter silently returns 0).
+            clauses.append(f"siren_siret like {_quote(siren + '*')}")
         if type_declarant_like:
-            clauses.append(f"type_declarant like {_quote('%' + type_declarant_like + '%')}")
+            clauses.append(f"type_declarant like {_quote('*' + type_declarant_like + '*')}")
         if deposited_since:
             clauses.append(f"date_depot_dossier>={_quote(deposited_since)}")
         if raw_where:

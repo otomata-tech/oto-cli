@@ -29,6 +29,7 @@ def spectacle_search(
     region: Optional[str] = typer.Option(None, "--region", help="Région SIRET (e.g. 'Île-de-France')"),
     dept: Optional[str] = typer.Option(None, "--dept", help="Département SIRET (e.g. 'Paris', 'Bouches-du-Rhône')"),
     cp: Optional[str] = typer.Option(None, "--cp", help="Code postal SIRET"),
+    siren: Optional[str] = typer.Option(None, "--siren", help="SIREN (9) or SIRET (14) prefix — matches all records starting with it"),
     declarant: Optional[str] = typer.Option(None, "--declarant", help="Substring match on type_declarant (e.g. 'privé', 'association', 'public')"),
     since: Optional[str] = typer.Option(None, "--since", help="Filed since YYYY-MM-DD"),
     raw_where: Optional[str] = typer.Option(None, "--where", help="Raw Opendatasoft where clause (advanced)"),
@@ -39,12 +40,16 @@ def spectacle_search(
     """Search LES with composed AND filters (statut + catégorie + NAF + région…)."""
     from oto.tools.culture import SpectacleClient
     client = SpectacleClient()
-    _print(client.search(
-        status=status, categorie=categorie, naf=naf, region=region,
-        departement=dept, code_postal=cp, type_declarant_like=declarant,
-        deposited_since=since, raw_where=raw_where, order_by=order,
-        limit=limit, offset=offset,
-    ))
+    try:
+        result = client.search(
+            status=status, categorie=categorie, naf=naf, region=region,
+            departement=dept, code_postal=cp, siren=siren,
+            type_declarant_like=declarant, deposited_since=since,
+            raw_where=raw_where, order_by=order, limit=limit, offset=offset,
+        )
+    except ValueError as e:
+        raise typer.BadParameter(str(e))
+    _print(result)
 
 
 @spectacle_app.command("get")
@@ -70,14 +75,18 @@ def spectacle_stats(
     """Group-by aggregate (fills the gap of the official datagouv MCP)."""
     from oto.tools.culture import SpectacleClient
     client = SpectacleClient()
-    _print(client.stats(
-        by,
-        where_filters={
-            "status": status, "categorie": categorie, "naf": naf,
-            "region": region, "departement": dept,
-        },
-        limit=limit,
-    ))
+    try:
+        result = client.stats(
+            by,
+            where_filters={
+                "status": status, "categorie": categorie, "naf": naf,
+                "region": region, "departement": dept,
+            },
+            limit=limit,
+        )
+    except ValueError as e:
+        raise typer.BadParameter(str(e))
+    _print(result)
 
 
 @spectacle_app.command("export-url")
