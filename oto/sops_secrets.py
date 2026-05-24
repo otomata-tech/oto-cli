@@ -34,8 +34,7 @@ def _candidate_default_dirs() -> List[Path]:
     """Default candidates for the secrets root directory."""
     home = Path.home()
     return [
-        home / ".otomata" / "secrets" / "secrets",  # symlinked layout (this machine)
-        home / ".otomata" / "secrets",              # canonical clone in-place
+        home / ".otomata" / "secrets",
     ]
 
 
