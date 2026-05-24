@@ -22,13 +22,15 @@ app.add_typer(lemlist_app, name="lemlist")
 def kaspr_enrich(
     linkedin_slug: str = typer.Argument(..., help="LinkedIn profile slug"),
     name: Optional[str] = typer.Option(None, "--name", help="Person full name"),
+    with_phone: bool = typer.Option(False, "--with-phone", help="Include phone (costs credits, reserved for UI)"),
 ):
-    """Enrich a LinkedIn profile with Kaspr (email, phone)."""
+    """Enrich a LinkedIn profile with Kaspr (emails by default, phone opt-in)."""
     import json
     from oto.tools.kaspr import KasprClient
 
     client = KasprClient()
-    result = client.enrich_linkedin(linkedin_slug, name=name)
+    data_to_get = ["workEmail", "phone"] if with_phone else None
+    result = client.enrich_linkedin(linkedin_slug, name=name, data_to_get=data_to_get)
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 

@@ -90,4 +90,12 @@ class KasprClient:
             data["isPhoneRequired"] = True
         data["dataToGet"] = data_to_get or ["workEmail", "phone"]
 
-        return self._request("POST", "profile/linkedin", json=data)
+        result = self._request("POST", "profile/linkedin", json=data)
+
+        # Strip phone data from response unless explicitly requested
+        if data_to_get is None or "phone" not in data_to_get:
+            profile = result.get("profile", {})
+            profile.pop("phones", None)
+            profile.pop("starryPhone", None)
+
+        return result
