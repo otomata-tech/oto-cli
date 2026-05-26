@@ -40,15 +40,41 @@ def search(
 
 @app.command("get")
 def get(siren: str = typer.Argument(..., help="SIREN (9 digits)")):
-    """Get company identity (siège, dirigeants, finances, établissements)."""
+    """Full company profile: identity + latest financials + recent legal events."""
     import json
+    from concurrent.futures import ThreadPoolExecutor
     from oto.tools.sirene import EntreprisesClient
+    from oto.tools.inpi import InpiClient
+    from oto.tools.bodacc import BodaccClient
 
-    client = EntreprisesClient()
-    result = client.get_by_siren(siren)
-    if not result:
+    entreprises = EntreprisesClient()
+    inpi = InpiClient()
+    bodacc = BodaccClient()
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_identity = pool.submit(entreprises.get_by_siren, siren)
+        f_bilans = pool.submit(inpi.list_exercises, siren)
+        f_events = pool.submit(bodacc.search_by_siren, siren, None, 10)
+
+    identity = f_identity.result()
+    if not identity:
         print(json.dumps({"error": "not_found", "siren": siren}))
         raise typer.Exit(1)
+
+    exercises = f_bilans.result()
+    latest_bilan = None
+    if exercises:
+        latest_bilan = inpi.get_bilan(siren, exercises[0]["date_cloture_exercice"])
+
+    events_data = f_events.result()
+
+    result = {
+        "siren": siren,
+        "identity": identity,
+        "latest_bilan": latest_bilan,
+        "recent_events": events_data.get("results", []),
+        "events_total": events_data.get("total_count", 0),
+    }
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
@@ -170,44 +196,6 @@ def tenders(
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
-@app.command("profile")
-def profile(siren: str = typer.Argument(..., help="SIREN (9 digits)")):
-    """Full company profile: identity + latest financials + recent legal events."""
-    import json
-    from concurrent.futures import ThreadPoolExecutor
-    from oto.tools.sirene import EntreprisesClient
-    from oto.tools.inpi import InpiClient
-    from oto.tools.bodacc import BodaccClient
-
-    entreprises = EntreprisesClient()
-    inpi = InpiClient()
-    bodacc = BodaccClient()
-
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        f_identity = pool.submit(entreprises.get_by_siren, siren)
-        f_bilans = pool.submit(inpi.list_exercises, siren)
-        f_events = pool.submit(bodacc.search_by_siren, siren, None, 10)
-
-    identity = f_identity.result()
-    if not identity:
-        print(json.dumps({"error": "not_found", "siren": siren}))
-        raise typer.Exit(1)
-
-    exercises = f_bilans.result()
-    latest_bilan = None
-    if exercises:
-        latest_bilan = inpi.get_bilan(siren, exercises[0]["date_cloture_exercice"])
-
-    events_data = f_events.result()
-
-    result = {
-        "siren": siren,
-        "identity": identity,
-        "latest_bilan": latest_bilan,
-        "recent_events": events_data.get("results", []),
-        "events_total": events_data.get("total_count", 0),
-    }
-    print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
 # --- SIRENE stock (batch) ---
