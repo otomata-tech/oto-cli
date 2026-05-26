@@ -83,19 +83,11 @@ class KasprClient:
         Returns:
             Enriched profile with emails and phones
         """
-        data = {"id": linkedin_id}
-        if name:
-            data["name"] = name
+        data = {"id": linkedin_id, "name": name or linkedin_id}
         if is_phone_required:
             data["isPhoneRequired"] = True
-        data["dataToGet"] = data_to_get or ["workEmail", "phone"]
+        data["dataToGet"] = data_to_get or (["workEmail", "phone"] if is_phone_required else ["workEmail"])
 
         result = self._request("POST", "profile/linkedin", json=data)
-
-        # Strip phone data from response unless explicitly requested
-        if data_to_get is None or "phone" not in data_to_get:
-            profile = result.get("profile", {})
-            profile.pop("phones", None)
-            profile.pop("starryPhone", None)
 
         return result
