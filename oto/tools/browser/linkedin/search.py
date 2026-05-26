@@ -20,6 +20,7 @@ class SearchMixin:
 
         url = f"https://www.linkedin.com/company/{company_slug}/"
         await self.goto(url)
+        await self._raise_if_auth_wall()
         await self.wait(2)
 
         html = await self.get_html()
@@ -49,6 +50,7 @@ class SearchMixin:
         )
 
         await self.goto(search_url)
+        await self._raise_if_auth_wall()
         await self.wait(4)
 
         for i in range(8):
@@ -69,6 +71,7 @@ class SearchMixin:
 
         people_url = f"https://www.linkedin.com/company/{company_slug}/people/"
         await self.goto(people_url)
+        await self._raise_if_auth_wall()
         await self.wait(3)
 
         for _ in range(limit // 12 + 1):
@@ -142,6 +145,7 @@ class SearchMixin:
             f"?keywords={quote(query)}&origin=SWITCH_SEARCH_VERTICAL"
         )
         await self.goto(search_url)
+        await self._raise_if_auth_wall()
         await self.wait(3)
 
         for i in range(3):
@@ -243,6 +247,7 @@ class SearchMixin:
 
             search_url = f"https://www.linkedin.com/search/results/people/?{params}"
             await self.goto(search_url)
+            await self._raise_if_auth_wall()
             await self.wait(4)
 
             for i in range(8):

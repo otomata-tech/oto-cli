@@ -183,6 +183,17 @@ class LinkedInClient(ProfileMixin, CompanyMixin, MessagesMixin, SearchMixin, Bro
         finally:
             self._release_slot()
 
+    # --- Auth wall detection ---
+
+    async def _raise_if_auth_wall(self):
+        """Raise RuntimeError if LinkedIn redirected to a login/authwall page (expired cookie)."""
+        url = self.page.url
+        if any(p in url for p in ("/login", "/authwall", "/checkpoint/lg/", "/uas/login")):
+            raise RuntimeError(
+                "LinkedIn session expired — cookie li_at is no longer valid. "
+                "Update it on https://oto.ninja/account or via the Oto Companion extension."
+            )
+
     # --- Rate limiting ---
 
     def _get_rate_limiter(self, action_type: str) -> LinkedInRateLimiter:

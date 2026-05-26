@@ -20,11 +20,7 @@ class ProfileMixin:
         await self.check_rate_limit("profile_visit")
 
         await self.goto(url)
-        # Attendre le rendu du Topcard plutôt qu'un wait fixe : on retourne
-        # dès que la section est dans le DOM (typiquement <1s sur cold call,
-        # parfois >4s quand LinkedIn dégrade le payload SDUI). Si jamais le
-        # Topcard n'apparaît pas en 15s, on tente quand même l'extraction —
-        # le scraper retournera des données partielles plutôt que de raise.
+        await self._raise_if_auth_wall()
         try:
             await self.page.wait_for_selector(
                 'section[componentkey*="Topcard"]', timeout=15000
@@ -78,14 +74,17 @@ class ProfileMixin:
 
         activity_url = url.rstrip("/") + "/recent-activity/all/"
         await self.goto(activity_url)
+        await self._raise_if_auth_wall()
         await self.wait(4)
 
-        # Scroll to load posts
+        # Scroll to load posts — full-viewport scrolls (1200-1800px) trigger
+        # LinkedIn's lazy-loader more reliably than half-viewport ones, while
+        # staying within human-plausible cadence. Wait 3-4s for DOM hydration.
         last_count = 0
         stale_rounds = 0
-        for i in range(max_posts // 2 + 3):
-            await self.scroll_by(random.randint(400, 700))
-            await self.wait(random.uniform(1.5, 2.5))
+        for i in range(max_posts // 2 + 5):
+            await self.scroll_by(random.randint(1200, 1800))
+            await self.wait(random.uniform(3.0, 4.0))
 
             count = await self.page.evaluate(
                 'document.querySelectorAll("[data-urn*=\\"urn:li:activity\\"]").length'
@@ -94,7 +93,7 @@ class ProfileMixin:
                 break
             if count == last_count:
                 stale_rounds += 1
-                if stale_rounds >= 3:
+                if stale_rounds >= 5:
                     break
             else:
                 stale_rounds = 0
@@ -118,6 +117,7 @@ class MessagesMixin:
             List of {name, preview, time, threadId}
         """
         await self.goto("https://www.linkedin.com/messaging/")
+        await self._raise_if_auth_wall()
         await self.wait(4)
 
         if search:
@@ -144,6 +144,7 @@ class MessagesMixin:
             {threadId, messages: [{sender, time, body}]}
         """
         await self.goto(f"https://www.linkedin.com/messaging/thread/{thread_id}/")
+        await self._raise_if_auth_wall()
         await self.wait(4)
 
         # Scroll up to load older messages
@@ -174,8 +175,7 @@ class CompanyMixin:
 
         about_url = url.rstrip("/") + "/about/"
         await self.goto(about_url)
-        # Le dt/dd contient industry/size/founded/etc. C'est l'indicateur le
-        # plus fiable que la page est hydratée (vs h1 qui apparaît au shell).
+        await self._raise_if_auth_wall()
         try:
             await self.page.wait_for_selector("dt", timeout=15000)
         except Exception:
