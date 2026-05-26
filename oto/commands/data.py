@@ -127,3 +127,22 @@ def rm_row(
 ):
     """Supprime une row par _id."""
     _print(_client().delete_row(namespace, row_id))
+
+
+@app.command("share")
+def share(
+    namespace: str = typer.Argument(..., help="Namespace à partager"),
+    email: str = typer.Argument(..., help="Email du destinataire (user oto)"),
+    permission: str = typer.Option("write", "--permission", "-p", help="'read' ou 'write'"),
+):
+    """Partage un namespace avec un autre user oto (DB + Google Drive)."""
+    _print(_client().share(namespace, email, permission))
+
+
+@app.command("unshare")
+def unshare(
+    namespace: str = typer.Argument(..., help="Namespace à départager"),
+    email: str = typer.Argument(..., help="Email du user à retirer"),
+):
+    """Retire l'accès d'un user à un namespace partagé."""
+    _print(_client().unshare(namespace, email))

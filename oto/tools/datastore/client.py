@@ -87,3 +87,13 @@ class DatastoreClient:
 
     def delete_row(self, namespace: str, row_id: str) -> dict:
         return self._req("DELETE", f"/api/datastore/namespaces/{namespace}/rows/{row_id}")
+
+    # --- sharing ---------------------------------------------------------------
+
+    def share(self, namespace: str, email: str, permission: str = "write") -> dict:
+        return self._req("POST", f"/api/datastore/namespaces/{namespace}/share",
+                         json={"email": email, "permission": permission})
+
+    def unshare(self, namespace: str, email: str) -> dict:
+        return self._req("DELETE", f"/api/datastore/namespaces/{namespace}/share",
+                         json={"email": email})
