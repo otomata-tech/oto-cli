@@ -185,14 +185,29 @@ class LinkedInClient(ProfileMixin, CompanyMixin, MessagesMixin, SearchMixin, Bro
 
     # --- Auth wall detection ---
 
+    _AUTH_WALL_MSG = (
+        "LinkedIn session expired — cookie li_at is no longer valid. "
+        "Update it on https://oto.ninja/account or via the Oto Companion extension."
+    )
+
     async def _raise_if_auth_wall(self):
-        """Raise RuntimeError if LinkedIn redirected to a login/authwall page (expired cookie)."""
+        """Raise RuntimeError if LinkedIn shows a login/authwall (expired cookie).
+
+        Checks both URL redirect and DOM indicators (overlay on same URL).
+        """
         url = self.page.url
         if any(p in url for p in ("/login", "/authwall", "/checkpoint/lg/", "/uas/login")):
-            raise RuntimeError(
-                "LinkedIn session expired — cookie li_at is no longer valid. "
-                "Update it on https://oto.ninja/account or via the Oto Companion extension."
-            )
+            raise RuntimeError(self._AUTH_WALL_MSG)
+
+        is_wall = await self.page.evaluate("""() => {
+            if (document.querySelector('[class*="authwall"], .authwall-join-form'))
+                return true;
+            if (document.querySelector('form.login__form, #login-form'))
+                return true;
+            return false;
+        }""")
+        if is_wall:
+            raise RuntimeError(self._AUTH_WALL_MSG)
 
     # --- Rate limiting ---
 

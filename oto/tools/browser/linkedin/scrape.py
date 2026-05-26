@@ -57,6 +57,9 @@ class ProfileMixin:
                 data["location"] = t
                 break
 
+        if not extracted.get("name") and not extracted.get("_topcard_texts"):
+            await self._raise_if_auth_wall()
+
         return data
 
     async def scrape_profile_posts(self, url: str, max_posts: int = 10) -> List[dict]:
