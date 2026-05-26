@@ -86,8 +86,12 @@ class KasprClient:
         data = {"id": linkedin_id, "name": name or linkedin_id}
         if is_phone_required:
             data["isPhoneRequired"] = True
-        data["dataToGet"] = data_to_get or (["workEmail", "phone"] if is_phone_required else ["workEmail"])
+        data["dataToGet"] = data_to_get or ["workEmail", "phone"]
 
-        result = self._request("POST", "profile/linkedin", json=data)
-
-        return result
+        try:
+            return self._request("POST", "profile/linkedin", json=data)
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code == 402 and "phone" in data["dataToGet"]:
+                data["dataToGet"] = [d for d in data["dataToGet"] if d != "phone"]
+                return self._request("POST", "profile/linkedin", json=data)
+            raise
