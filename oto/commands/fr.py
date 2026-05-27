@@ -198,50 +198,65 @@ def tenders(
 
 
 
-# --- SIRENE stock (batch) ---
+# --- SIRENE stock (HTTP client vers mcp.oto.ninja) ---
 
-stock_app = typer.Typer(help="SIRENE stock file for batch operations (~2GB local file)")
+stock_app = typer.Typer(help="SIRENE stock — DuckDB côté serveur, accessed via mcp.oto.ninja")
 app.add_typer(stock_app, name="stock")
 
 
-@stock_app.command("status")
-def stock_status():
-    """Show stock file status."""
+@stock_app.command("info")
+def stock_info():
+    """Server-side parquet metadata (size, mtime, total rows)."""
+    import json
     from oto.tools.sirene import SireneStock
 
-    stock = SireneStock()
-    print(f"Path: {stock.stock_file}")
-    print(f"Available: {'Yes' if stock.is_available else 'No'}")
-    if stock.is_available:
-        print(f"Size: {stock.file_size_gb:.2f} GB")
-        age = stock.file_age_days
-        if age:
-            print(f"Age: {age:.0f} days")
-    if stock.is_downloading:
-        print("Status: Downloading...")
-
-
-@stock_app.command("download")
-def stock_download(force: bool = typer.Option(False, "--force", "-f")):
-    """Download SIRENE stock file (~2GB from data.gouv.fr)."""
-    from oto.tools.sirene import SireneStock
-
-    stock = SireneStock()
-    if stock.is_available and not force:
-        print(f"Stock file already exists: {stock.stock_file}")
-        print(f"Size: {stock.file_size_gb:.2f} GB, Age: {stock.file_age_days:.0f} days")
-        print("Use --force to re-download")
-        return
-    stock.download(force=force)
+    print(json.dumps(SireneStock().info(), indent=2, ensure_ascii=False))
 
 
 @stock_app.command("addresses")
 def stock_addresses(sirens: str = typer.Argument(..., help="SIREN numbers (comma-separated)")):
-    """Get headquarters addresses from stock file (batch mode)."""
+    """Get headquarters addresses for a batch of SIRENs (1 HTTP call per SIREN)."""
     import json
     from oto.tools.sirene import SireneStock
 
-    stock = SireneStock()
     siren_list = [s.strip() for s in sirens.split(",")]
-    addresses = stock.get_headquarters_addresses(siren_list)
+    addresses = SireneStock().get_headquarters_addresses(siren_list)
     print(json.dumps(addresses, indent=2, ensure_ascii=False))
+
+
+@stock_app.command("etablissements")
+def stock_etablissements(
+    siren: str = typer.Argument(..., help="SIREN (9 digits)"),
+    all_states: bool = typer.Option(False, "--all", help="Inclure les fermés"),
+):
+    """List all establishments of a SIREN (siège + secondaires)."""
+    import json
+    from oto.tools.sirene import SireneStock
+
+    items = SireneStock().get_all_establishments(siren, active_only=not all_states)
+    print(json.dumps(items, indent=2, ensure_ascii=False))
+
+
+@stock_app.command("search")
+def stock_search(
+    naf: Optional[str] = typer.Option(None, "--naf"),
+    code_commune: Optional[str] = typer.Option(None, "--commune", help="Code INSEE COG"),
+    code_postal: Optional[str] = typer.Option(None, "--cp"),
+    denomination: Optional[str] = typer.Option(None, "--denomination"),
+    enseigne: Optional[str] = typer.Option(None, "--enseigne"),
+    sieges_only: bool = typer.Option(False, "--sieges-only"),
+    all_states: bool = typer.Option(False, "--all"),
+    limit: int = typer.Option(100, "--limit", "-n"),
+    offset: int = typer.Option(0, "--offset"),
+):
+    """Multi-criteria search over the SIRENE stock parquet."""
+    import json
+    from oto.tools.sirene import SireneStock
+
+    res = SireneStock().search(
+        naf=naf, code_commune=code_commune, code_postal=code_postal,
+        denomination=denomination, enseigne=enseigne,
+        active_only=not all_states, sieges_only=sieges_only,
+        limit=limit, offset=offset,
+    )
+    print(json.dumps(res, indent=2, ensure_ascii=False))

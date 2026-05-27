@@ -1,377 +1,181 @@
+"""SIRENE stock — client HTTP vers `mcp.oto.ninja/api/sirene/*`.
+
+Le parquet INSEE complet vit côté serveur, query via DuckDB. Cette classe ne
+télécharge plus rien localement — elle fait des appels REST authentifiés.
+
+Auth : token long-lived stocké dans le secret `OTO_API_KEY` (issu depuis
+`app.oto.ninja/account` → "tokens cli"). Override URL : `OTO_API_URL`.
+
+Use cases couverts :
+- `get_headquarters_addresses(sirens)` — batch enrichissement (1 call HTTP par siren ;
+  pour de très gros batches, paralléliser côté caller).
+- `get_all_establishments(siren)` — tous les établissements d'une boîte.
+- `lookup_siret(siret)` — fetch précis par SIRET.
+- `search(...)` — recherche multi-critères (NAF, commune, CP, enseigne, denomination).
+
+Pas de cache local — chaque appel HTTP. Si tu fais > 1000 lookups, considère
+batcher côté serveur (à dev si besoin).
 """
-Batch operations using local SIRENE stock file (offline mode).
+from __future__ import annotations
 
-The stock file contains all French establishments (~35M records, ~2GB parquet).
-Much faster than API for batch processing thousands of companies.
+import os
+from typing import Any, Dict, List, Optional
 
-Usage:
-    from oto.tools.sirene import SireneStock
+import requests
 
-    stock = SireneStock()
+from oto.config import require_secret
 
-    # Download stock file first (~2GB, takes a few minutes)
-    stock.download()
 
-    # Then use for batch enrichment
-    addresses = stock.get_headquarters_addresses(["443061841", "552032534"])
+_DEFAULT_BASE_URL = "https://mcp.oto.ninja"
 
-Storage:
-    Default location: ~/.otomata/sirene/StockEtablissement.parquet
-    Override with: SireneStock(data_dir="/custom/path")
-"""
 
-import threading
-import time
-from pathlib import Path
-from typing import Optional, Dict, List, Any
-
-from ...config import get_config_dir
-
-# Storage location
-DEFAULT_DATA_DIR = get_config_dir() / "sirene"
-STOCK_FILENAME = "StockEtablissement.parquet"
-LOCK_FILENAME = ".download.lock"
-
-# data.gouv.fr dataset
-DATASET_URL = "https://www.data.gouv.fr/fr/datasets/base-sirene-des-entreprises-et-de-leurs-etablissements-siren-siret/"
-STOCK_DOWNLOAD_URL = "https://object.files.data.gouv.fr/data-pipeline-open/siren/stock/StockEtablissement_utf8.parquet"
-
-COLUMNS = [
-    "siren",
-    "siret",
-    "etablissementSiege",
-    "etatAdministratifEtablissement",
-    "numeroVoieEtablissement",
-    "typeVoieEtablissement",
-    "libelleVoieEtablissement",
-    "codePostalEtablissement",
-    "libelleCommuneEtablissement",
-    "coordonneeLambertAbscisseEtablissement",
-    "coordonneeLambertOrdonneeEtablissement",
-]
-
-# Global lock for download
-_download_lock = threading.Lock()
-_download_in_progress = False
+class SireneStockError(RuntimeError):
+    def __init__(self, status: int, detail: Any):
+        self.status = status
+        self.detail = detail
+        super().__init__(f"sirene_stock {status}: {detail}")
 
 
 class SireneStock:
-    """
-    Batch operations using local SIRENE stock file.
-
-    The stock file must be downloaded before use. Call stock.download()
-    or use the CLI: otomata sirene stock download
+    """HTTP client over `/api/sirene/*` exposed by oto-mcp.
 
     Example:
         stock = SireneStock()
-        stock.download()  # First time only, ~2GB
-
-        addresses = stock.get_headquarters_addresses(["443061841"])
+        siege = stock.lookup_siege("443061841")
+        ets = stock.get_all_establishments("443061841")
+        addresses = stock.get_headquarters_addresses(["443061841", "552032534"])
     """
 
-    def __init__(
-        self,
-        data_dir: Optional[str] = None,
-        auto_sync: bool = False,
-        max_age_days: int = 30,
-    ):
-        """
-        Initialize stock handler.
+    def __init__(self, base_url: Optional[str] = None, token: Optional[str] = None):
+        self.base_url = (
+            base_url
+            or os.environ.get("OTO_API_URL")
+            or _DEFAULT_BASE_URL
+        ).rstrip("/")
+        self.token = token or require_secret("OTO_API_KEY")
+        self.session = requests.Session()
+        self.session.headers.update({
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json",
+        })
 
-        Args:
-            data_dir: Directory to store stock file (default: ~/.otomata/sirene)
-            auto_sync: Auto-download if missing, or async update if outdated
-            max_age_days: Max file age before triggering async update (default: 30)
-        """
-        self.data_dir = Path(data_dir) if data_dir else DEFAULT_DATA_DIR
-        self.stock_file = self.data_dir / STOCK_FILENAME
-        self.lock_file = self.data_dir / LOCK_FILENAME
-        self.auto_sync = auto_sync
-        self.max_age_days = max_age_days
+    # --- low-level ------------------------------------------------------------
 
-    def download(self, force: bool = False, async_mode: bool = False) -> Optional[Path]:
-        """
-        Download or update stock file from data.gouv.fr.
-
-        Args:
-            force: Re-download even if file exists
-            async_mode: Run download in background thread
-
-        Returns:
-            Path to downloaded file (None if async)
-        """
-        if async_mode:
-            thread = threading.Thread(
-                target=self._download_sync, args=(force,), daemon=True
-            )
-            thread.start()
-            return None
-        return self._download_sync(force)
-
-    def _download_sync(self, force: bool = False) -> Path:
-        """Synchronous download implementation."""
-        global _download_in_progress
-        import requests
-
-        with _download_lock:
-            if _download_in_progress:
-                print("Download already in progress, skipping...")
-                return self.stock_file
-            _download_in_progress = True
-
-        try:
-            self.data_dir.mkdir(parents=True, exist_ok=True)
-            self.lock_file.write_text(str(time.time()))
-
-            if self.stock_file.exists() and not force:
-                size_gb = self.stock_file.stat().st_size / 1e9
-                print(f"Stock file exists: {self.stock_file} ({size_gb:.1f} GB)")
-                print("Use download(force=True) to re-download")
-                return self.stock_file
-
-            print(f"Downloading SIRENE stock file (~2GB)...")
-            print(f"Source: {STOCK_DOWNLOAD_URL}")
-            print(f"Destination: {self.stock_file}")
-
-            temp_file = self.stock_file.with_suffix(".parquet.tmp")
-
-            response = requests.get(STOCK_DOWNLOAD_URL, stream=True, timeout=3600)
-            response.raise_for_status()
-
-            total_size = int(response.headers.get("content-length", 0))
-            downloaded = 0
-
-            with open(temp_file, "wb") as f:
-                for chunk in response.iter_content(chunk_size=65536):
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    if total_size:
-                        pct = (downloaded / total_size) * 100
-                        print(
-                            f"\rProgress: {pct:.1f}% ({downloaded / 1e9:.2f} GB)",
-                            end="",
-                            flush=True,
-                        )
-
-            print(f"\nDownload complete, replacing old file...")
-            temp_file.replace(self.stock_file)
-            print(f"Stock file ready: {self.stock_file}")
-            return self.stock_file
-
-        except Exception as e:
-            print(f"Download error: {e}")
-            temp_file = self.stock_file.with_suffix(".parquet.tmp")
-            if temp_file.exists():
-                temp_file.unlink()
-            raise
-
-        finally:
-            if self.lock_file.exists():
-                self.lock_file.unlink()
-            with _download_lock:
-                _download_in_progress = False
-
-    @property
-    def is_downloading(self) -> bool:
-        """Check if a download is currently in progress."""
-        global _download_in_progress
-        if _download_in_progress:
-            return True
-        if self.lock_file.exists():
+    def _get(self, path: str, params: Optional[dict] = None) -> Any:
+        r = self.session.get(f"{self.base_url}{path}", params=params or {}, timeout=30)
+        if r.status_code >= 400:
             try:
-                lock_time = float(self.lock_file.read_text())
-                if time.time() - lock_time > 7200:  # 2 hours
-                    self.lock_file.unlink()
-                    return False
-                return True
+                detail = r.json()
             except Exception:
-                return False
-        return False
+                detail = r.text
+            raise SireneStockError(r.status_code, detail)
+        return r.json()
 
-    @property
-    def is_available(self) -> bool:
-        """Check if stock file is downloaded and ready."""
-        return self.stock_file.exists()
+    # --- normalisation --------------------------------------------------------
 
-    @property
-    def file_size_gb(self) -> Optional[float]:
-        """Get stock file size in GB, or None if not downloaded."""
-        if self.stock_file.exists():
-            return self.stock_file.stat().st_size / 1e9
-        return None
-
-    @property
-    def file_age_days(self) -> Optional[float]:
-        """Get stock file age in days, or None if not downloaded."""
-        if self.stock_file.exists():
-            mtime = self.stock_file.stat().st_mtime
-            return (time.time() - mtime) / 86400
-        return None
-
-    def _ensure_file(self):
-        """Ensure stock file exists."""
-        if self.auto_sync:
-            self._maybe_sync()
-
-        if not self.stock_file.exists():
-            raise FileNotFoundError(
-                f"Stock file not found: {self.stock_file}\n"
-                f"Download it first:\n"
-                f"  - CLI: otomata sirene stock download\n"
-                f"  - Python: stock.download()\n"
-                f"  - Manual: {DATASET_URL}"
-            )
-
-    def _maybe_sync(self):
-        """Check if sync needed and trigger async download if outdated."""
-        if self.is_downloading:
-            return
-
-        if not self.stock_file.exists():
-            print("Stock file missing, downloading...")
-            self.download()
-            return
-
-        age = self.file_age_days
-        if age and age > self.max_age_days:
-            print(f"Stock file is {age:.0f} days old, starting background update...")
-            self.download(force=True, async_mode=True)
-
-    def _query_parquet(
-        self, filters: List[tuple], columns: Optional[List[str]] = None
-    ) -> "pd.DataFrame":
+    @staticmethod
+    def _normalize(etab: dict) -> dict:
+        """Normalise un dict établissement (snake_case INSEE) → forme stable
+        pour les consommateurs historiques (street, postal_code, city, status…).
         """
-        Query parquet file with filters - memory efficient.
+        if not etab:
+            return etab
+        num = (etab.get("numero_voie") or "").strip()
+        type_voie = (etab.get("type_voie") or "").strip()
+        voie = (etab.get("libelle_voie") or "").strip()
+        street = " ".join(p for p in (num, type_voie, voie) if p) or None
+        out = {
+            "siren": etab.get("siren"),
+            "siret": etab.get("siret"),
+            "is_headquarters": bool(etab.get("is_siege")),
+            "street": street,
+            "postal_code": etab.get("code_postal"),
+            "city": etab.get("libelle_commune"),
+            "code_commune": etab.get("code_commune"),
+            "status": "active" if etab.get("etat") == "A" else "closed",
+            "naf": etab.get("naf"),
+            "denomination": etab.get("denomination"),
+            "enseigne": etab.get("enseigne_1") or etab.get("enseigne_2") or etab.get("enseigne_3"),
+            "tranche_effectifs": etab.get("tranche_effectifs"),
+            "date_creation": etab.get("date_creation"),
+        }
+        if etab.get("lambert_x") is not None:
+            out["lambert_x"] = float(etab["lambert_x"])
+            out["lambert_y"] = float(etab["lambert_y"]) if etab.get("lambert_y") is not None else None
+        return out
 
-        Uses pyarrow to filter at read time, only loading matching rows.
-        """
-        import pyarrow.parquet as pq
-        import pyarrow.compute as pc
-
-        self._ensure_file()
-
-        cols = columns or COLUMNS
-        table = pq.read_table(self.stock_file, columns=cols)
-
-        mask = None
-        for col, op, value in filters:
-            if op == "==":
-                col_mask = pc.equal(table[col], value)
-            elif op == "in":
-                col_mask = pc.is_in(table[col], value_set=value)
-            else:
-                raise ValueError(f"Unsupported operator: {op}")
-
-            if mask is None:
-                mask = col_mask
-            else:
-                mask = pc.and_(mask, col_mask)
-
-        if mask is not None:
-            table = table.filter(mask)
-
-        return table.to_pandas()
+    # --- high-level (legacy API preservée) -----------------------------------
 
     def get_headquarters_addresses(self, sirens: List[str]) -> Dict[str, Dict[str, Any]]:
+        """Headquarters address for each SIREN. Returns {siren: {street, postal_code, city, status, ...}}.
+
+        Pour les SIRENs introuvables : absents du dict (ni siege ni siret côté serveur).
         """
-        Get headquarters addresses for a list of SIRENs.
+        out: Dict[str, Dict[str, Any]] = {}
+        for siren in sirens:
+            siren = str(siren)
+            data = self._get("/api/sirene/siege", params={"siren": siren})
+            siege = data.get("siege")
+            if siege:
+                out[siren] = self._normalize(siege)
+        return out
 
-        Memory efficient: filters parquet file without loading entire dataset.
+    def get_all_establishments(self, siren: str, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Tous les établissements d'un SIREN (siège + secondaires)."""
+        params = {"siren": str(siren), "active_only": "true" if active_only else "false"}
+        data = self._get("/api/sirene/etablissements", params=params)
+        return [self._normalize(e) for e in data.get("items", [])]
 
-        Args:
-            sirens: List of 9-digit SIREN numbers
+    # --- nouvelles méthodes ---------------------------------------------------
 
-        Returns:
-            Dict mapping SIREN to address info:
-            {
-                "443061841": {
-                    "street": "1 RUE EXAMPLE",
-                    "postal_code": "75001",
-                    "city": "PARIS",
-                    "status": "active"
-                }
-            }
+    def lookup_siege(self, siren: str) -> Optional[Dict[str, Any]]:
+        """Siège (headquarters) d'un SIREN, ou None."""
+        data = self._get("/api/sirene/siege", params={"siren": str(siren)})
+        siege = data.get("siege")
+        return self._normalize(siege) if siege else None
+
+    def lookup_siret(self, siret: str) -> Optional[Dict[str, Any]]:
+        """Établissement précis par SIRET."""
+        data = self._get("/api/sirene/siret", params={"siret": str(siret)})
+        etab = data.get("etablissement")
+        return self._normalize(etab) if etab else None
+
+    def search(
+        self,
+        naf: Optional[str] = None,
+        code_commune: Optional[str] = None,
+        code_postal: Optional[str] = None,
+        denomination: Optional[str] = None,
+        enseigne: Optional[str] = None,
+        active_only: bool = True,
+        sieges_only: bool = False,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """Recherche multi-critères côté serveur (DuckDB). Tous filtres AND.
+
+        Returns: {items: [...], count: N, limit: N, offset: N}
         """
-        import pandas as pd
-        import pyarrow as pa
+        params: dict[str, Any] = {
+            "active_only": "true" if active_only else "false",
+            "sieges_only": "true" if sieges_only else "false",
+            "limit": int(limit),
+            "offset": int(offset),
+        }
+        if naf:
+            params["naf"] = naf
+        if code_commune:
+            params["code_commune"] = code_commune
+        if code_postal:
+            params["code_postal"] = code_postal
+        if denomination:
+            params["denomination"] = denomination
+        if enseigne:
+            params["enseigne"] = enseigne
+        data = self._get("/api/sirene/search", params=params)
+        data["items"] = [self._normalize(e) for e in data.get("items", [])]
+        return data
 
-        if not sirens:
-            return {}
-
-        sirens_list = [str(s) for s in sirens]
-
-        df = self._query_parquet(
-            [
-                ("siren", "in", pa.array(sirens_list)),
-                ("etablissementSiege", "==", True),
-            ]
-        )
-
-        result = {}
-        for _, row in df.iterrows():
-            siren = row["siren"]
-
-            num = str(row["numeroVoieEtablissement"] or "").strip()
-            type_voie = str(row["typeVoieEtablissement"] or "").strip()
-            voie = str(row["libelleVoieEtablissement"] or "").strip()
-            street = f"{num} {type_voie} {voie}".strip()
-
-            result[siren] = {
-                "street": street if street else None,
-                "postal_code": row["codePostalEtablissement"],
-                "city": row["libelleCommuneEtablissement"],
-                "status": "active"
-                if row["etatAdministratifEtablissement"] == "A"
-                else "closed",
-            }
-
-            if pd.notna(row["coordonneeLambertAbscisseEtablissement"]):
-                result[siren]["lambert_x"] = float(
-                    row["coordonneeLambertAbscisseEtablissement"]
-                )
-                result[siren]["lambert_y"] = float(
-                    row["coordonneeLambertOrdonneeEtablissement"]
-                )
-
-        return result
-
-    def get_all_establishments(self, siren: str) -> List[Dict[str, Any]]:
-        """
-        Get all establishments for a SIREN from stock file.
-
-        Args:
-            siren: 9-digit SIREN number
-
-        Returns:
-            List of establishment dicts with address info
-        """
-        import pandas as pd
-
-        df = self._query_parquet([("siren", "==", str(siren))])
-
-        results = []
-        for _, row in df.iterrows():
-            num = str(row["numeroVoieEtablissement"] or "").strip()
-            type_voie = str(row["typeVoieEtablissement"] or "").strip()
-            voie = str(row["libelleVoieEtablissement"] or "").strip()
-            street = f"{num} {type_voie} {voie}".strip()
-
-            etab = {
-                "siret": row["siret"],
-                "siren": row["siren"],
-                "is_headquarters": bool(row["etablissementSiege"]),
-                "street": street if street else None,
-                "postal_code": row["codePostalEtablissement"],
-                "city": row["libelleCommuneEtablissement"],
-                "status": "active"
-                if row["etatAdministratifEtablissement"] == "A"
-                else "closed",
-            }
-
-            if pd.notna(row["coordonneeLambertAbscisseEtablissement"]):
-                etab["lambert_x"] = float(row["coordonneeLambertAbscisseEtablissement"])
-                etab["lambert_y"] = float(row["coordonneeLambertOrdonneeEtablissement"])
-
-            results.append(etab)
-
-        return results
+    def info(self) -> Dict[str, Any]:
+        """Métadonnées du parquet côté serveur (size, mtime, total_rows)."""
+        return self._get("/api/sirene/info")
