@@ -145,6 +145,7 @@ class SireneStock:
         naf: Optional[str] = None,
         code_commune: Optional[str] = None,
         code_postal: Optional[str] = None,
+        departement: Optional[str] = None,
         denomination: Optional[str] = None,
         enseigne: Optional[str] = None,
         active_only: bool = True,
@@ -168,6 +169,8 @@ class SireneStock:
             params["code_commune"] = code_commune
         if code_postal:
             params["code_postal"] = code_postal
+        if departement:
+            params["departement"] = departement
         if denomination:
             params["denomination"] = denomination
         if enseigne:

@@ -242,6 +242,7 @@ def stock_search(
     naf: Optional[str] = typer.Option(None, "--naf"),
     code_commune: Optional[str] = typer.Option(None, "--commune", help="Code INSEE COG"),
     code_postal: Optional[str] = typer.Option(None, "--cp"),
+    departement: Optional[str] = typer.Option(None, "--dept", help="Préfixe code postal (ex. 26, 971)"),
     denomination: Optional[str] = typer.Option(None, "--denomination"),
     enseigne: Optional[str] = typer.Option(None, "--enseigne"),
     sieges_only: bool = typer.Option(False, "--sieges-only"),
@@ -255,7 +256,7 @@ def stock_search(
 
     res = SireneStock().search(
         naf=naf, code_commune=code_commune, code_postal=code_postal,
-        denomination=denomination, enseigne=enseigne,
+        departement=departement, denomination=denomination, enseigne=enseigne,
         active_only=not all_states, sieges_only=sieges_only,
         limit=limit, offset=offset,
     )
