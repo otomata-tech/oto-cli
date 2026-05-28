@@ -48,12 +48,19 @@ class SerperClient:
         self._last_request = time.time()
 
     def _request(self, endpoint: str, json_data: Dict) -> Dict:
-        """Make API request."""
+        """Make API request. Surface le message d'erreur Serper plutôt qu'un
+        opaque "400 Bad Request" (Serper renvoie 400 + {"message":...} pour
+        "Not enough credits", clé invalide, etc.)."""
         self._rate_limit()
 
         url = f"{self.BASE_URL}{endpoint}"
         response = self.session.post(url, json=json_data)
-        response.raise_for_status()
+        if response.status_code >= 400:
+            try:
+                msg = response.json().get("message") or response.text
+            except Exception:
+                msg = response.text
+            raise RuntimeError(f"Serper API {response.status_code}: {msg}")
         return response.json()
 
     def search(
@@ -158,7 +165,12 @@ class SerperClient:
             payload["includeMarkdown"] = True
 
         response = self.session.post(self.SCRAPE_URL, json=payload)
-        response.raise_for_status()
+        if response.status_code >= 400:
+            try:
+                msg = response.json().get("message") or response.text
+            except Exception:
+                msg = response.text
+            raise RuntimeError(f"Serper scrape {response.status_code}: {msg}")
         return response.json()
 
     def get_suggestions(self, query: str, country: str = None) -> List[str]:
