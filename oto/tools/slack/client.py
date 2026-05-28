@@ -361,3 +361,23 @@ class SlackClient:
             Response data with "messages.matches"
         """
         return self._request("GET", "search.messages", params={"query": query, "count": count})
+
+    def file_info(self, file_id: str) -> Dict[str, Any]:
+        """Get file metadata (requires files:read scope)."""
+        return self._request("GET", "files.info", params={"file": file_id})
+
+    def download_file(self, file_id: str, dest: str) -> str:
+        """Download a Slack file to a local path.
+
+        Uses the user token (files in private channels / DMs need user-level access).
+        Returns the destination path.
+        """
+        info = self.file_info(file_id)
+        url = info["file"]["url_private_download"]
+        token = self.user_token or self.bot_token
+        resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, stream=True)
+        resp.raise_for_status()
+        with open(dest, "wb") as f:
+            for chunk in resp.iter_content(chunk_size=8192):
+                f.write(chunk)
+        return dest

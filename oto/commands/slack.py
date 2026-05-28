@@ -57,6 +57,11 @@ def send(
 
     If `channel` starts with `@` and contains `.`, it's treated as an email and
     resolved to a DM channel via users.lookupByEmail + conversations.open.
+
+    Tip — messages with apostrophes/accents: pipe the text via stdin
+    (`oto slack send <chan> < message.txt`) rather than building a shell-quoted
+    --text. Mixing quote styles (e.g. the `'\''` idiom inside a double-quoted
+    string) leaks literal characters into the message.
     """
     client = _client(ctx, default_as_user=not as_bot)
 
@@ -66,6 +71,14 @@ def send(
         text = sys.stdin.read().rstrip()
     if not text:
         raise typer.BadParameter("Empty message")
+
+    if "'\\''" in text:
+        print(
+            "warning: message contains the literal sequence \"'\\''\" — this is "
+            "almost always a shell-quoting accident. Sending as-is. To avoid it, "
+            "pipe the text via stdin instead of an inline --text.",
+            file=sys.stderr,
+        )
 
     target = channel
     if channel.startswith("@") and "." in channel:
@@ -153,6 +166,22 @@ def search(
     # search.messages is user-token only on Slack's side
     result = _client(ctx, default_as_user=True).search_messages(query, count=count)
     print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+@app.command("download")
+def download(
+    ctx: typer.Context,
+    file_id: str = typer.Argument(..., help="Slack file ID (F...)"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Destination path (default: ./<original_name>)"),
+):
+    """Download a Slack file (audio, image, PDF…) to local disk."""
+    client = _client(ctx, default_as_user=True)
+    info = client.file_info(file_id)
+    f = info["file"]
+    dest = output or f.get("name", file_id)
+    client.download_file(file_id, dest)
+    size_kb = os.path.getsize(dest) / 1024
+    typer.echo(f"Downloaded {f.get('name', file_id)} ({f.get('pretty_type', '?')}, {size_kb:.0f} KB) → {dest}")
 
 
 def _workspace_name(client) -> str:
