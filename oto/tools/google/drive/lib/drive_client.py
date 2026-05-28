@@ -463,6 +463,65 @@ class DriveClient:
         except Exception as e:
             raise DriveClientError(f"Failed to delete file {file_id}: {e}")
 
+    def share(self, file_id: str, email: str, role: str = "reader", notify: bool = True) -> Dict:
+        """Share a file or folder with a user by email.
+
+        Args:
+            file_id: Google Drive file/folder ID
+            email: Recipient email address
+            role: Permission role ('reader', 'writer', 'commenter')
+            notify: Send an email notification to the recipient
+
+        Returns:
+            Dictionary with permission metadata
+        """
+        try:
+            permission = self.service.permissions().create(
+                fileId=file_id,
+                body={"type": "user", "role": role, "emailAddress": email},
+                supportsAllDrives=True,
+                sendNotificationEmail=notify,
+            ).execute()
+            return {
+                "status": "success",
+                "file_id": file_id,
+                "email": email,
+                "role": role,
+                "permission_id": permission["id"],
+            }
+        except Exception as e:
+            raise DriveClientError(f"Failed to share {file_id} with {email}: {e}")
+
+    def list_permissions(self, file_id: str) -> List[Dict]:
+        """List permissions on a file or folder."""
+        try:
+            resp = self.service.permissions().list(
+                fileId=file_id,
+                supportsAllDrives=True,
+                fields="permissions(id,emailAddress,role,type,displayName)",
+            ).execute()
+            return resp.get("permissions", [])
+        except Exception as e:
+            raise DriveClientError(f"Failed to list permissions for {file_id}: {e}")
+
+    def unshare(self, file_id: str, email: str) -> Dict:
+        """Remove a user's permission on a file or folder by email."""
+        try:
+            perms = self.list_permissions(file_id)
+            match = next((p for p in perms if p.get("emailAddress", "").lower() == email.lower()), None)
+            if not match:
+                raise DriveClientError(f"No permission found for {email} on {file_id}")
+            self.service.permissions().delete(
+                fileId=file_id,
+                permissionId=match["id"],
+                supportsAllDrives=True,
+            ).execute()
+            return {"status": "success", "file_id": file_id, "email": email, "removed_permission_id": match["id"]}
+        except DriveClientError:
+            raise
+        except Exception as e:
+            raise DriveClientError(f"Failed to unshare {file_id} with {email}: {e}")
+
     @staticmethod
     def _guess_mime_type(file_path: Path) -> str:
         """Guess MIME type from file extension."""

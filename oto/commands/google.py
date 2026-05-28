@@ -155,6 +155,49 @@ def drive_delete(
     result = client.delete_file(file_id)
     print(json.dumps(result, indent=2))
 
+@drive_app.command("share")
+def drive_share(
+    file_id: str = typer.Argument(..., help="Google Drive file or folder ID"),
+    email: str = typer.Argument(..., help="Recipient email address"),
+    role: str = typer.Option("reader", help="Permission role: reader, writer, commenter"),
+    no_notify: bool = typer.Option(False, "--no-notify", help="Don't send email notification"),
+    account: Optional[str] = typer.Option(None, "--account", "-a", help="Google account name"),
+):
+    """Share a file or folder with a user by email."""
+    from oto.tools.google.drive.lib.drive_client import DriveClient
+
+    client = DriveClient(account=account)
+    result = client.share(file_id, email, role=role, notify=not no_notify)
+    print(json.dumps(result, indent=2))
+
+
+@drive_app.command("unshare")
+def drive_unshare(
+    file_id: str = typer.Argument(..., help="Google Drive file or folder ID"),
+    email: str = typer.Argument(..., help="Email address to remove"),
+    account: Optional[str] = typer.Option(None, "--account", "-a", help="Google account name"),
+):
+    """Remove a user's access to a file or folder."""
+    from oto.tools.google.drive.lib.drive_client import DriveClient
+
+    client = DriveClient(account=account)
+    result = client.unshare(file_id, email)
+    print(json.dumps(result, indent=2))
+
+
+@drive_app.command("permissions")
+def drive_permissions(
+    file_id: str = typer.Argument(..., help="Google Drive file or folder ID"),
+    account: Optional[str] = typer.Option(None, "--account", "-a", help="Google account name"),
+):
+    """List permissions on a file or folder."""
+    from oto.tools.google.drive.lib.drive_client import DriveClient
+
+    client = DriveClient(account=account)
+    perms = client.list_permissions(file_id)
+    print(json.dumps(perms, indent=2))
+
+
 @docs_app.command("create")
 def docs_create(
     title: str = typer.Argument(..., help="Document title"),
