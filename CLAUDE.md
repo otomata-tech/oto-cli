@@ -49,6 +49,7 @@ oto/
 │   │   ├── gemini.py           # Gemini image generation
 │   │   ├── pdf.py              # markdown → PDF via pandoc + weasyprint (bundled template)
 │   │   ├── data.py             # Datastore (per-user Google Sheets via mcp.oto.ninja, OTO_API_KEY)
+│   │   ├── ninja.py            # façade mcp.oto.ninja: secrets per-user (LinkedIn/Crunchbase/API keys), OTO_API_KEY
 │   │   ├── config.py           # config & secrets management
 │   │   └── skills.py           # Claude Code skills (enable/disable)
 │   └── tools/                  # API clients
@@ -64,6 +65,7 @@ oto/
 │       ├── pennylane/          # Accounting
 │       ├── attio/              # Attio CRM
 │       ├── datastore/          # HTTP client → mcp.oto.ninja /api/datastore/*
+│       ├── ninja/              # HTTP client → mcp.oto.ninja /api/settings/* (secrets per-user)
 │       ├── kaspr/, hunter/, lemlist/  # Enrichment & outreach
 │       ├── zohodesk/           # Zoho Desk (tickets/support)
 │       ├── pdf/                # pandoc+weasyprint wrapper, bundled CSS template (sober editorial)
