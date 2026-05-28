@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import csv
 import io
+import math
 import statistics
 from datetime import datetime
 from typing import Any, Optional
@@ -25,6 +26,7 @@ import requests
 
 
 BASE_URL = "https://files.data.gouv.fr/geo-dvf/latest/csv"
+BAN_URL = "https://api-adresse.data.gouv.fr/search/"
 FIRST_YEAR = 2021
 
 # type_local DVF → on ne calcule un €/m² que pour le bâti habitable.
@@ -97,6 +99,77 @@ class DvfClient:
             "comparables": comps[:limit],
         }
 
+    def geocode(self, adresse: str) -> Optional[dict[str, Any]]:
+        """Géocode une adresse via la BAN (Base Adresse Nationale, keyless).
+
+        Renvoie {lon, lat, code_commune, label, score} ou None si pas de match.
+        """
+        r = self.session.get(BAN_URL, params={"q": adresse, "limit": 1}, timeout=self.timeout)
+        r.raise_for_status()
+        feats = r.json().get("features", [])
+        if not feats:
+            return None
+        f = feats[0]
+        lon, lat = f["geometry"]["coordinates"]
+        p = f["properties"]
+        return {
+            "lon": lon,
+            "lat": lat,
+            "code_commune": p.get("citycode"),
+            "label": p.get("label"),
+            "score": p.get("score"),
+        }
+
+    def comparables_by_address(
+        self,
+        adresse: str,
+        radius_m: int = 500,
+        type_local: Optional[str] = None,
+        surface_min: Optional[float] = None,
+        surface_max: Optional[float] = None,
+        years: int = 3,
+        limit: int = 50,
+    ) -> dict[str, Any]:
+        """Comparables autour d'une adresse précise (géocode BAN + filtre rayon).
+
+        Args:
+            adresse: adresse libre (ex. "44 la canebière marseille").
+            radius_m: rayon de recherche en mètres autour du point géocodé.
+            type_local / surface_min / surface_max / years / limit : cf. comparables().
+        """
+        geo = self.geocode(adresse)
+        if not geo or not geo.get("code_commune"):
+            return {"adresse": adresse, "error": "geocode_failed", "comparables": [], "count": 0}
+
+        base = self.comparables(
+            code_commune=geo["code_commune"],
+            type_local=type_local,
+            surface_min=surface_min,
+            surface_max=surface_max,
+            years=years,
+            limit=100000,  # on filtre par distance après, pas avant
+        )
+        near: list[dict[str, Any]] = []
+        for c in base["comparables"]:
+            if c["latitude"] is None or c["longitude"] is None:
+                continue
+            dist = _haversine_m(geo["lat"], geo["lon"], c["latitude"], c["longitude"])
+            if dist <= radius_m:
+                near.append({**c, "distance_m": round(dist)})
+        near.sort(key=lambda c: c["distance_m"])
+
+        prix_m2 = [c["prix_m2"] for c in near if c["prix_m2"]]
+        return {
+            "adresse_geocodee": geo["label"],
+            "code_commune": geo["code_commune"],
+            "radius_m": radius_m,
+            "type_local": type_local,
+            "years": years,
+            "count": len(near),
+            "median_prix_m2": round(statistics.median(prix_m2)) if prix_m2 else None,
+            "comparables": near[:limit],
+        }
+
     def stats(
         self,
         code_commune: str,
@@ -136,6 +209,16 @@ class DvfClient:
             "max_prix_m2": round(max(prix_m2)) if prix_m2 else None,
             "by_year": dict(sorted(by_year.items())),
         }
+
+
+def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Distance en mètres entre 2 points (lat/lon degrés)."""
+    r = 6371000.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
 def _dept_from_commune(code_commune: str) -> str:
