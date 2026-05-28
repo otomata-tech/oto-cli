@@ -134,6 +134,49 @@ def add_person(
     _out(result.get("data", {}))
 
 
+@app.command("update-person")
+def update_person(
+    record_id: str = typer.Argument(..., help="Record ID"),
+    first_name: Optional[str] = typer.Option(None, "--first", help="First name (requires --last)"),
+    last_name: Optional[str] = typer.Option(None, "--last", "-l", help="Last name (requires --first)"),
+    email: Optional[str] = typer.Option(None, "--email", "-e"),
+    phone: Optional[str] = typer.Option(None, "--phone"),
+    job_title: Optional[str] = typer.Option(None, "--title", "-t"),
+    company: Optional[str] = typer.Option(None, "--company", "-c", help="Company name (matches existing)"),
+    linkedin: Optional[str] = typer.Option(None, "--linkedin", help="LinkedIn URL"),
+):
+    """Update a contact. Multi-value fields (email/phone) are replaced."""
+    values = {}
+    if first_name or last_name:
+        if not (first_name and last_name):
+            print("To change the name, pass both --first and --last")
+            raise typer.Exit(1)
+        full = f"{first_name} {last_name}".strip()
+        values["name"] = [{"first_name": first_name, "last_name": last_name, "full_name": full}]
+    if email:
+        values["email_addresses"] = [{"email_address": email}]
+    if phone:
+        values["phone_numbers"] = [{"phone_number": phone}]
+    if job_title:
+        values["job_title"] = [{"value": job_title}]
+    if linkedin:
+        values["linkedin"] = [{"value": linkedin}]
+    if company:
+        co = _request("POST", "objects/companies/records/query", json={
+            "filter": {"name": {"$eq": company}}, "limit": 1,
+        }).get("data", [])
+        if co:
+            values["company"] = [{"target_object": "companies", "target_record_id": co[0]["id"]["record_id"]}]
+        else:
+            print(f"WARN: company '{company}' not found")
+
+    if not values:
+        print("Nothing to update")
+        return
+    result = _request("PATCH", f"objects/people/records/{record_id}", json={"data": {"values": values}})
+    _out(result.get("data", {}))
+
+
 @app.command("delete-person")
 def delete_person(record_id: str = typer.Argument(..., help="Record ID")):
     """Delete a contact."""
@@ -180,6 +223,29 @@ def add_company(
     if description:
         values["description"] = [{"value": description}]
     result = _request("POST", "objects/companies/records", json={"data": {"values": values}})
+    _out(result.get("data", {}))
+
+
+@app.command("update-company")
+def update_company(
+    record_id: str = typer.Argument(..., help="Record ID"),
+    name: Optional[str] = typer.Option(None, "--name", "-n"),
+    domain: Optional[str] = typer.Option(None, "--domain", "-d"),
+    description: Optional[str] = typer.Option(None, "--desc"),
+):
+    """Update a company. Domains is replaced."""
+    values = {}
+    if name:
+        values["name"] = [{"value": name}]
+    if domain:
+        values["domains"] = [{"domain": domain}]
+    if description:
+        values["description"] = [{"value": description}]
+
+    if not values:
+        print("Nothing to update")
+        return
+    result = _request("PATCH", f"objects/companies/records/{record_id}", json={"data": {"values": values}})
     _out(result.get("data", {}))
 
 
