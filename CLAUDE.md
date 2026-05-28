@@ -30,7 +30,8 @@ oto/
 │   │   ├── notion.py           # search, page, database
 │   │   ├── browser.py          # linkedin, crunchbase, pappers, indeed, g2, google
 │   │   ├── reddit.py           # Reddit JSON API (subreddit, search, post)
-│   │   ├── sirene.py           # SIRENE API (search, get, stock)
+│   │   ├── fr.py               # données entreprise FR (fr_*) : recherche, bilans INPI, BODACC + sirene stock
+│   │   ├── dvf.py              # valeurs foncières (immobilier) : stats/comparables €/m² par commune ou adresse
 │   │   ├── culture.py          # Min. Culture open data (Opendatasoft) — sub-namespace `spectacle` (LES)
 │   │   ├── search.py           # facade: dispatches to serper or browser via config
 │   │   ├── serper.py           # direct Serper API (web, news, scrape, suggestions)
