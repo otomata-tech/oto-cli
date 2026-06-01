@@ -134,15 +134,36 @@ class GmailClient:
                 userId='me', messageId=message_id, id=att_id,
             ).execute()
             data = base64.urlsafe_b64decode(att['data'])
-            path = out / filename
+            path = self._unique_path(out, filename)
             path.write_bytes(data)
             downloaded.append({
-                'filename': filename,
+                'filename': path.name,
                 'path': str(path),
                 'size_bytes': len(data),
             })
 
         return downloaded
+
+    @staticmethod
+    def _unique_path(out: Path, filename: str) -> Path:
+        """Return a path under `out` that doesn't collide with an existing file.
+
+        Outlook inline images all share names like `image.png`, so without
+        disambiguation the second attachment would silently overwrite the
+        first. Suffix an index before the extension on collision:
+        `image.png`, `image_1.png`, `image_2.png`, …
+        """
+        candidate = out / filename
+        if not candidate.exists():
+            return candidate
+        stem = candidate.stem
+        suffix = candidate.suffix
+        i = 1
+        while True:
+            candidate = out / f'{stem}_{i}{suffix}'
+            if not candidate.exists():
+                return candidate
+            i += 1
 
     def get_signature(self) -> str:
         """Get the primary Gmail signature (HTML)."""
