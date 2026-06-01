@@ -52,7 +52,8 @@ cd oto-cli && pip install -e ".[all]"
 | `oto zohodesk` | Zoho Desk (tickets, threads, contacts, departments) | — |
 | `oto company` | French company lookup (multi-source) | — |
 | `oto audio` | Audio recording, transcription, summaries | — |
-| `oto gemini` | Image generation (text-to-image, editing) | — |
+| `oto gemini` | Image generation via Gemini 3 Pro (text-to-image, editing) | — |
+| `oto openai` | Image generation via gpt-image-2 (text-to-image, editing) | — |
 | `oto config` | Configuration & secrets management | — |
 
 Connectors without an "Extra" only need `requests` (included in base install).

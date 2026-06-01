@@ -1,15 +1,14 @@
-"""Gemini image generation commands."""
+"""OpenAI image generation commands (gpt-image)."""
 
 import typer
 from typing import Optional
 from pathlib import Path
 
-app = typer.Typer(help="Gemini image generation (text-to-image and image editing)")
+app = typer.Typer(help="OpenAI image generation (text-to-image and image editing)")
 
-# Single canonical model: the best available (Gemini 3 Pro Image, aka "Nano Banana Pro").
-# Pass a full model ID via -m to override.
+# Single canonical model: the latest gpt-image. Pass a full model ID via -m to override.
 MODEL_ALIASES = {
-    "best": "gemini-3-pro-image-preview",
+    "best": "gpt-image-2",
 }
 
 
@@ -21,17 +20,17 @@ def resolve_model(model: str) -> str:
 def generate(
     prompt: str = typer.Option(..., "--prompt", "-p", help="Generation prompt"),
     image: Optional[str] = typer.Option(None, "--image", "-i", help="Source image path (for editing/compositing)"),
-    output: str = typer.Option("output.jpg", "--output", "-o", help="Output file path"),
+    output: str = typer.Option("output.png", "--output", "-o", help="Output file path"),
     model: str = typer.Option("best", "--model", "-m", help="Model: 'best' alias, or a full model ID"),
-    size: Optional[str] = typer.Option(None, "--size", "-s", help="Output size (e.g. 2K, 4K)"),
+    size: Optional[str] = typer.Option(None, "--size", "-s", help="Output size (1024x1024, 1536x1024, 1024x1536, auto)"),
 ):
-    """Generate or edit an image via Gemini."""
+    """Generate or edit an image via OpenAI gpt-image."""
     import json
     import base64
     import mimetypes
-    from oto.tools.gemini import GeminiClient
+    from oto.tools.openai import OpenAIImageClient
 
-    client = GeminiClient()
+    client = OpenAIImageClient()
     resolved = resolve_model(model)
     out_path = Path(output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -42,21 +41,19 @@ def generate(
         if not src.exists():
             print(json.dumps({"status": "error", "error": f"Image not found: {image}"}))
             raise typer.Exit(1)
-        mime = mimetypes.guess_type(str(src))[0] or "image/jpeg"
+        mime = mimetypes.guess_type(str(src))[0] or "image/png"
         b64 = base64.b64encode(src.read_bytes()).decode()
         result = client.edit_image(prompt, b64, mime, model=resolved, image_size=size)
         if result["status"] == "success":
-            img_bytes = base64.b64decode(result["data"])
-            out_path.write_bytes(img_bytes)
+            out_path.write_bytes(base64.b64decode(result["data"]))
             print(json.dumps({"status": "success", "output": str(out_path), "model": resolved}))
         else:
             print(json.dumps(result))
             raise typer.Exit(1)
     else:
         # Text-to-image mode
-        result = client.generate_image(prompt, output_dir=str(out_path.parent), model=resolved)
+        result = client.generate_image(prompt, output_dir=str(out_path.parent), model=resolved, size=size or "1024x1024")
         if result["status"] == "success":
-            # Rename to requested output path
             generated = Path(result["image_path"])
             if generated != out_path:
                 generated.rename(out_path)
@@ -71,7 +68,7 @@ def batch(
     manifest: str = typer.Option(..., "--manifest", "-f", help="JSON manifest file path"),
     output_dir: str = typer.Option(".", "--output-dir", "-d", help="Output directory"),
     model: str = typer.Option("best", "--model", "-m", help="Default model (overridable per job)"),
-    size: Optional[str] = typer.Option(None, "--size", "-s", help="Output size (e.g. 2K)"),
+    size: Optional[str] = typer.Option(None, "--size", "-s", help="Output size (e.g. 1024x1024)"),
     skip_existing: bool = typer.Option(True, "--skip-existing/--no-skip", help="Skip if output file exists"),
     delay: float = typer.Option(2.0, "--delay", help="Seconds between API calls"),
 ):
@@ -87,7 +84,7 @@ def batch(
     import time
     import base64
     import mimetypes
-    from oto.tools.gemini import GeminiClient
+    from oto.tools.openai import OpenAIImageClient
 
     manifest_path = Path(manifest)
     if not manifest_path.exists():
@@ -99,10 +96,9 @@ def batch(
         print(json.dumps({"status": "error", "error": "Manifest must be a JSON array"}))
         raise typer.Exit(1)
 
-    client = GeminiClient()
+    client = OpenAIImageClient()
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    default_model = resolve_model(model)
 
     results = []
     for i, job in enumerate(jobs):
@@ -122,7 +118,7 @@ def batch(
                 if not src.exists():
                     results.append({"output": job["output"], "status": "error", "error": f"Image not found: {source}"})
                     continue
-                mime = mimetypes.guess_type(str(src))[0] or "image/jpeg"
+                mime = mimetypes.guess_type(str(src))[0] or "image/png"
                 b64 = base64.b64encode(src.read_bytes()).decode()
                 result = client.edit_image(job["prompt"], b64, mime, model=job_model, image_size=size)
                 if result["status"] == "success":
@@ -131,7 +127,7 @@ def batch(
                 else:
                     results.append({"output": job["output"], "status": "error", "error": result.get("error", "")})
             else:
-                result = client.generate_image(job["prompt"], output_dir=str(out_file.parent), model=job_model)
+                result = client.generate_image(job["prompt"], output_dir=str(out_file.parent), model=job_model, size=size or "1024x1024")
                 if result["status"] == "success":
                     generated = Path(result["image_path"])
                     if generated != out_file:

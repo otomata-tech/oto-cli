@@ -46,7 +46,8 @@ oto/
 │   │   ├── whatsapp.py         # WhatsApp messaging
 │   │   ├── slack.py            # Slack — send/read/list-channels/dm (bot+user tokens)
 │   │   ├── audio.py            # audio recording, transcription
-│   │   ├── gemini.py           # Gemini image generation
+│   │   ├── gemini.py           # Gemini image generation (gemini-3-pro-image)
+│   │   ├── openai.py           # OpenAI image generation (gpt-image-2)
 │   │   ├── pdf.py              # markdown → PDF via pandoc + weasyprint (bundled template)
 │   │   ├── data.py             # Datastore (per-user Google Sheets via mcp.oto.ninja, OTO_API_KEY)
 │   │   ├── ninja.py            # façade mcp.oto.ninja: secrets per-user (LinkedIn/Crunchbase/API keys), OTO_API_KEY
@@ -68,6 +69,7 @@ oto/
 │       ├── ninja/              # HTTP client → mcp.oto.ninja /api/settings/* (secrets per-user)
 │       ├── kaspr/, hunter/, lemlist/  # Enrichment & outreach
 │       ├── zohodesk/           # Zoho Desk (tickets/support)
+│       ├── gemini/, openai/    # Image generation (Gemini 3 Pro, gpt-image-2)
 │       ├── pdf/                # pandoc+weasyprint wrapper, bundled CSS template (sober editorial)
 │       └── folk/, zoho/, slack/, resend/  # CRM & messaging
 ├── skills/                     # Claude Code skills

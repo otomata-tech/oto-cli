@@ -24,13 +24,13 @@ class GeminiClient:
 
     Features:
     - Chat completions (text)
-    - Image generation (Gemini 2.0 Flash)
+    - Image generation (Gemini 3 Pro Image)
     - Style reference support for image generation
     """
 
     BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
-    def __init__(self, api_key: str = None, model: str = "gemini-2.0-flash"):
+    def __init__(self, api_key: str = None, model: str = "gemini-3-pro-image-preview"):
         self.api_key = api_key or require_secret("GEMINI_API_KEY")
         self.model = model
 
@@ -117,7 +117,7 @@ class GeminiClient:
         style_guidelines: str = None,
         reference_image_path: str = None,
         output_dir: str = None,
-        model: str = "gemini-2.0-flash-exp-image-generation",
+        model: str = "gemini-3-pro-image-preview",
     ) -> Dict[str, Any]:
         """
         Generate an image using Gemini.
@@ -198,7 +198,7 @@ class GeminiClient:
         prompt: str,
         image_b64: str,
         image_mime: str = "image/jpeg",
-        model: str = "gemini-2.5-flash-image",
+        model: str = "gemini-3-pro-image-preview",
         reference_images: List[Dict[str, str]] | None = None,
         image_size: str | None = None,
     ) -> Dict[str, Any]:
