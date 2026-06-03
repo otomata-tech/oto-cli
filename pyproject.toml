@@ -37,6 +37,10 @@ google = [
 browser = [
     "o-browser",
 ]
+# Site adapters = o-browser plugins (entry-point group "o_browser.sites"), à la carte.
+vivatech = [
+    "o-browser-vivatech",
+]
 anthropic = [
     "anthropic>=0.40.0",
 ]
@@ -45,7 +49,7 @@ stock = [
     "pandas>=1.5.0",
 ]
 all = [
-    "oto-cli[google,browser,anthropic,stock]",
+    "oto-cli[google,browser,vivatech,anthropic,stock]",
 ]
 
 [project.urls]

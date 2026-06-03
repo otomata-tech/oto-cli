@@ -437,3 +437,78 @@ def sncf_justificatifs(
 
     result = asyncio.run(run())
     print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+# ── VivaTech ──────────────────────────────────────────────────────────────
+
+vivatech_app = typer.Typer(help="VivaTech exhibitors directory (Next.js Server Action + SSR flight)")
+app.add_typer(vivatech_app, name="vivatech")
+
+# VivaTech's anti-bot (GTAB) blocks headless; a persistent (ideally authenticated) profile is needed.
+DEFAULT_VIVATECH_PROFILE = "~/.config/browser/vivatech"
+
+
+def _vivatech_client(profile: Optional[str]):
+    from oto.tools.browser import VivaTechClient
+    if VivaTechClient is None:
+        raise typer.BadParameter(
+            "Adapter VivaTech absent. L'installer : pip install o-browser-vivatech "
+            "(ou pip install 'oto-cli[vivatech]')."
+        )
+    return VivaTechClient(profile_path=profile or DEFAULT_VIVATECH_PROFILE)
+
+
+def _emit(data, out: Optional[str]):
+    """Write to file, or to stdout when out is None or '-'."""
+    import json
+    if out and out != "-":
+        with open(out, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        n = len(data) if isinstance(data, list) else 1
+        print(f"{n} -> {out}")
+    else:
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+
+
+@vivatech_app.command("exhibitors")
+def vivatech_exhibitors(
+    enrich: bool = typer.Option(False, "--enrich", help="Charger aussi la fiche complète de chaque exposant (49 champs, ~13 min)"),
+    out: Optional[str] = typer.Option(None, "--out", "-o", help="Fichier de sortie. Défaut : vivatech-exhibitors[-full].json. '-' = stdout."),
+    profile: Optional[str] = typer.Option(None, help="Profil Chrome (défaut ~/.config/browser/vivatech)"),
+    search: Optional[str] = typer.Option(None, help="Filtre recherche texte"),
+    sectors: Optional[str] = typer.Option(None, help="Filtre secteur"),
+):
+    """Annuaire complet des exposants VivaTech (liste, ou fiches complètes avec --enrich)."""
+    import asyncio
+    # Le dataset est volumineux (~3-10 Mo) : on écrit dans un fichier par défaut.
+    if out is None:
+        out = "vivatech-exhibitors-full.json" if enrich else "vivatech-exhibitors.json"
+    filters = {k: v for k, v in {"search": search, "sectors": sectors}.items() if v}
+
+    async def run():
+        async with _vivatech_client(profile) as vt:
+            if filters:
+                listing = await vt.list_exhibitors(filters=filters)
+                if not enrich:
+                    return listing
+                slugs = [e["slug"] for e in listing]
+                details = await vt.enrich(slugs, progress=lambda d, t: print(f"[{d}/{t}]", flush=True))
+                return [details.get(e["slug"], e) for e in listing]
+            return await vt.scrape(enrich=enrich, progress=lambda d, t: print(f"[{d}/{t}]", flush=True))
+
+    _emit(asyncio.run(run()), out)
+
+
+@vivatech_app.command("exhibitor")
+def vivatech_exhibitor(
+    slug: str = typer.Argument(..., help="Slug exposant (ex. 'adobe')"),
+    profile: Optional[str] = typer.Option(None, help="Profil Chrome (défaut ~/.config/browser/vivatech)"),
+):
+    """Fiche complète (49 champs) d'un exposant."""
+    import asyncio
+
+    async def run():
+        async with _vivatech_client(profile) as vt:
+            return await vt.get_exhibitor(slug)
+
+    _emit(asyncio.run(run()), None)
