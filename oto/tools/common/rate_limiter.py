@@ -393,16 +393,22 @@ class LinkedInRateLimiter(RateLimiter):
             'profile_visit': {'max_per_hour': 10, 'max_per_day': 80, 'min_delay': 45},
             'search_export': {'max_per_hour': 80, 'max_per_day': 1000, 'min_delay': 5},
             'company_scrape': {'max_per_hour': 200, 'max_per_day': 2000, 'min_delay': 2},
+            'message': {'max_per_hour': 6, 'max_per_day': 40, 'min_delay': 60},
+            'invitation': {'max_per_hour': 4, 'max_per_day': 15, 'min_delay': 120},
         },
         'premium': {
             'profile_visit': {'max_per_hour': 12, 'max_per_day': 100, 'min_delay': 30},
             'search_export': {'max_per_hour': 100, 'max_per_day': 1000, 'min_delay': 5},
             'company_scrape': {'max_per_hour': 200, 'max_per_day': 2000, 'min_delay': 2},
+            'message': {'max_per_hour': 10, 'max_per_day': 60, 'min_delay': 45},
+            'invitation': {'max_per_hour': 6, 'max_per_day': 20, 'min_delay': 90},
         },
         'sales_navigator': {
             'profile_visit': {'max_per_hour': 15, 'max_per_day': 150, 'min_delay': 20},
             'search_export': {'max_per_hour': 150, 'max_per_day': 2500, 'min_delay': 3},
             'company_scrape': {'max_per_hour': 300, 'max_per_day': 3000, 'min_delay': 2},
+            'message': {'max_per_hour': 15, 'max_per_day': 100, 'min_delay': 30},
+            'invitation': {'max_per_hour': 8, 'max_per_day': 25, 'min_delay': 60},
         },
     }
 

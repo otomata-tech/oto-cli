@@ -13,6 +13,7 @@ from oto.tools.common.rate_limiter import LinkedInRateLimiter
 from oto.config import get_sessions_dir, get_secret
 from .scrape import ProfileMixin, CompanyMixin, MessagesMixin
 from .search import SearchMixin
+from .outreach import OutreachMixin
 
 
 def get_worker_cookie(
@@ -59,7 +60,7 @@ MAX_SESSIONS_PER_IDENTITY = 3
 SEMAPHORE_DIR = Path("/tmp/linkedin_sessions")
 
 
-class LinkedInClient(ProfileMixin, CompanyMixin, MessagesMixin, SearchMixin, BrowserClient):
+class LinkedInClient(ProfileMixin, CompanyMixin, MessagesMixin, OutreachMixin, SearchMixin, BrowserClient):
     """
     LinkedIn automation client with:
     - Cookie-based authentication

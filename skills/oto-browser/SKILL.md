@@ -5,7 +5,7 @@ description: "Browser automation: free-form browsing (any URL) + LinkedIn, Crunc
 
 # Browser Automation (oto browser / oto linkedin)
 
-Prérequis : `oto` installé (pipx), `o-browser` installé (`pip install -e /data/projects/o-browser`), `LINKEDIN_COOKIE` (li_at) pour LinkedIn.
+Prérequis : `oto` installé (pipx), `o-browser` installé (`pip install -e /data/projects/o-browser`). Pour LinkedIn, **un profil browser persistant loggé** (`oto linkedin login --profile <dir>`) — l'injection de cookie `LINKEDIN_COOKIE` dans un browser frais est bloquée par le fingerprinting TLS de LinkedIn (la session doit être créée dans le même browser qui la réutilise).
 
 Toutes les commandes browser tournent en headless par défaut. Ajouter `--no-headless` pour debug visuel.
 
@@ -67,6 +67,35 @@ oto linkedin posts "https://www.linkedin.com/in/john-doe/" -n 10
 ```
 
 Options communes LinkedIn : `--cookie`, `--cdp-url`, `--profile`, `--channel`, `--no-rate-limit`, `--no-headless`.
+
+### Session : login profil persistant
+
+```bash
+# Une fois par profil : ouvre un browser headed, tu te connectes à la main, tu fermes la fenêtre → session persistée
+oto linkedin login --profile ~/.config/browser/linkedin
+```
+
+Ensuite toutes les commandes LinkedIn s'utilisent avec `--profile ~/.config/browser/linkedin`.
+
+### Messagerie & outreach
+
+```bash
+# Lire les conversations (liste) ou un thread précis
+oto linkedin messages "Nom Contact" --profile <dir>
+oto linkedin messages --thread <threadId> --profile <dir>
+
+# Envoyer un MESSAGE direct (1er degré uniquement, ou InMail premium)
+oto linkedin send "https://www.linkedin.com/in/john-doe/" "Bonjour …" --profile <dir>
+
+# Envoyer une INVITATION de connexion (primitive cold-outreach), avec note optionnelle (<=300 car.)
+oto linkedin connect "https://www.linkedin.com/in/john-doe/" --note "Bonjour …" --profile <dir>
+```
+
+**Flow cold typique** : `search-people`/`employees` (trouver) → `connect --note` (inviter) → après acceptation, `send` (messager). Le message direct échoue si le contact n'est pas en 1er degré (pas de bouton « Message »).
+
+`--dry-run` (sur `send` et `connect`) : exécute tout sauf le clic d'envoi final et sauve un screenshot dans `/tmp` — pour valider sans contacter personne.
+
+Rate limiting actif par défaut (presets conservateurs : free = 6 msg/h·40/j, 4 invit/h·15/j). `--no-rate-limit` pour passer outre.
 
 ## Crunchbase
 

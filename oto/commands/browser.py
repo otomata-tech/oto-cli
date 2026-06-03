@@ -208,6 +208,83 @@ def linkedin_messages(
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
+@linkedin_app.command("login")
+def linkedin_login(
+    profile: str = typer.Option(..., help="Chrome profile directory to provision/refresh (e.g. ~/.config/browser/linkedin)"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+):
+    """Open a headed browser to log into LinkedIn; the session persists in <profile>.
+
+    Run once per profile. Cookie injection is blocked by LinkedIn's TLS
+    fingerprinting — a session created inside this same browser is the only
+    reliable way to authenticate scraping/outreach afterwards.
+    """
+    import asyncio
+    import json
+    import sys
+    from o_browser import BrowserClient
+
+    async def run():
+        async with BrowserClient(profile_path=profile, interactive=True, channel=channel) as browser:
+            await browser.goto("https://www.linkedin.com/login")
+            print(
+                "→ Log into LinkedIn in the opened window, then CLOSE it to save the session.",
+                file=sys.stderr,
+            )
+            await browser.wait_closed()
+        return {"status": "session_saved", "profile": profile}
+
+    print(json.dumps(asyncio.run(run()), indent=2, ensure_ascii=False))
+
+
+@linkedin_app.command("send")
+def linkedin_send(
+    url: str = typer.Argument(..., help="Recipient profile URL (must be a 1st-degree connection)"),
+    message: str = typer.Argument(..., help="Message body"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Type the message but do NOT click send (saves a screenshot)"),
+    cookie: Optional[str] = typer.Option(None, envvar="LINKEDIN_COOKIE", help="li_at cookie"),
+    cdp_url: Optional[str] = typer.Option(None, "--cdp-url", help="Connect to existing Chrome via CDP"),
+    identity: str = typer.Option("default", help="Identity for rate limiting"),
+    profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    no_rate_limit: bool = typer.Option(False, "--no-rate-limit", help="Disable rate limiting"),
+    headless: bool = typer.Option(True, help="Run headless"),
+):
+    """Send a direct message to a 1st-degree connection."""
+    import asyncio
+    import json
+
+    async def run():
+        async with _linkedin_client(cookie=cookie, cdp_url=cdp_url, identity=identity, profile=profile, channel=channel, headless=headless, rate_limit=not no_rate_limit) as client:
+            return await client.send_message(url, message, dry_run=dry_run)
+
+    print(json.dumps(asyncio.run(run()), indent=2, ensure_ascii=False))
+
+
+@linkedin_app.command("connect")
+def linkedin_connect(
+    url: str = typer.Argument(..., help="Profile URL to send a connection request to"),
+    note: Optional[str] = typer.Option(None, "--note", help="Optional note (<=300 chars)"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Open the invite dialog but do NOT click send (saves a screenshot)"),
+    cookie: Optional[str] = typer.Option(None, envvar="LINKEDIN_COOKIE", help="li_at cookie"),
+    cdp_url: Optional[str] = typer.Option(None, "--cdp-url", help="Connect to existing Chrome via CDP"),
+    identity: str = typer.Option("default", help="Identity for rate limiting"),
+    profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    no_rate_limit: bool = typer.Option(False, "--no-rate-limit", help="Disable rate limiting"),
+    headless: bool = typer.Option(True, help="Run headless"),
+):
+    """Send a connection invitation (cold-outreach primitive), optionally with a note."""
+    import asyncio
+    import json
+
+    async def run():
+        async with _linkedin_client(cookie=cookie, cdp_url=cdp_url, identity=identity, profile=profile, channel=channel, headless=headless, rate_limit=not no_rate_limit) as client:
+            return await client.send_invitation(url, note=note, dry_run=dry_run)
+
+    print(json.dumps(asyncio.run(run()), indent=2, ensure_ascii=False))
+
+
 @app.command("google")
 def google_search(
     query: str = typer.Option(..., "--query", "-q", help="Search query"),

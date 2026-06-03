@@ -39,6 +39,37 @@ JS_THREAD_MESSAGES = """() => {
     return msgs;
 }"""
 
+# Outreach: find a visible button/link/menuitem whose aria-label or text matches
+# any of the given labels (FR/EN), mark it with a data attribute, and return a
+# selector so the caller can do a real Playwright click (fires React handlers).
+JS_MARK_CONTROL = r"""({labels, tags}) => {
+    const norm = s => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    const els = [...document.querySelectorAll(tags.join(','))];
+    for (const el of els) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) continue;
+        if (el.getAttribute('aria-hidden') === 'true') continue;
+        if (el.disabled) continue;
+        const aria = norm(el.getAttribute('aria-label'));
+        const txt = norm(el.innerText || el.textContent);
+        for (const raw of labels) {
+            const w = norm(raw);
+            if (!w) continue;
+            if (aria === w || aria.startsWith(w + ' ') || aria.includes(' ' + w) ||
+                txt === w || txt.startsWith(w + ' ')) {
+                el.setAttribute('data-oto-mark', '1');
+                el.scrollIntoView({block: 'center'});
+                return '[data-oto-mark="1"]';
+            }
+        }
+    }
+    return null;
+}"""
+
+JS_CLEAR_MARK = """() => {
+    document.querySelectorAll('[data-oto-mark]').forEach(e => e.removeAttribute('data-oto-mark'));
+}"""
+
 # Profile: extract name, headline, location from Topcard + About sections
 JS_PROFILE = """() => {
     const r = {};
