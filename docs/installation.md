@@ -8,9 +8,10 @@ sub-command (`oto google`, `oto linkedin`, …). The CLI is self-documenting via
 
 - **Python 3.10+**
 - **pipx** (recommended) — isolates the CLI in its own venv
-- **Google Chrome** — required only for the `browser` connectors (LinkedIn,
-  Crunchbase, Indeed, …). `oto` drives your installed Chrome; if Chrome is
-  absent see [Troubleshooting](#browser-no-chromechromium-found).
+- **Google Chrome** — required for the `browser` connectors (LinkedIn,
+  Crunchbase, Indeed, …). `oto` drives your installed Chrome. For LinkedIn it
+  **must** be real Google Chrome, not Chromium — LinkedIn flags the Chromium
+  fingerprint. If Chrome is absent, install it (don't `patchright install chromium`).
 
 ## Install pipx
 
@@ -114,16 +115,10 @@ pipx uninstall oto-cli
 ### `oto: command not found`
 Run `pipx ensurepath` and restart the terminal.
 
-### Browser: no Chrome/Chromium found
-`oto` prefers your installed Google Chrome. If you don't have Chrome, install a
-Chromium for Patchright inside the CLI's venv:
-
-```bash
-~/.local/share/pipx/venvs/oto-cli/bin/patchright install chromium
-```
-
-(On macOS/Windows the path under `pipx environment --value PIPX_LOCAL_VENVS` is
-the equivalent.)
+### Browser: no Chrome found
+Install **Google Chrome**. `oto` drives it via the `chrome` channel. For LinkedIn
+do not substitute Chromium (`patchright install chromium`) — LinkedIn detects and
+flags the Chromium fingerprint. Real Chrome is the requirement.
 
 ### LinkedIn: "session expired — cookie li_at is no longer valid"
 The profile's session lapsed. Re-run the login:
