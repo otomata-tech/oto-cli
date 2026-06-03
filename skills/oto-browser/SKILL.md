@@ -68,27 +68,27 @@ oto linkedin posts "https://www.linkedin.com/in/john-doe/" -n 10
 
 Options communes LinkedIn : `--cookie`, `--cdp-url`, `--profile`, `--channel`, `--no-rate-limit`, `--no-headless`.
 
-### Session : login profil persistant
+### Session : login (une fois)
 
 ```bash
-# Une fois par profil : ouvre un browser headed, tu te connectes à la main, tu fermes la fenêtre → session persistée
-oto linkedin login --profile ~/.config/browser/linkedin
+# Ouvre un browser headed : connecte-toi à la main, ferme la fenêtre → session persistée
+oto linkedin login
 ```
 
-Ensuite toutes les commandes LinkedIn s'utilisent avec `--profile ~/.config/browser/linkedin`.
+La session est stockée dans un **profil par défaut** (`~/.config/browser/linkedin`) et **réutilisée automatiquement** par toutes les commandes LinkedIn — rien à repréciser. `--profile <dir>` ne sert qu'à gérer **plusieurs comptes** LinkedIn. Quand une commande renvoie "session expired", refais `oto linkedin login`.
 
 ### Messagerie & outreach
 
 ```bash
 # Lire les conversations (liste) ou un thread précis
-oto linkedin messages "Nom Contact" --profile <dir>
-oto linkedin messages --thread <threadId> --profile <dir>
+oto linkedin messages "Nom Contact"
+oto linkedin messages --thread <threadId>
 
 # Envoyer un MESSAGE direct (1er degré uniquement, ou InMail premium)
-oto linkedin send "https://www.linkedin.com/in/john-doe/" "Bonjour …" --profile <dir>
+oto linkedin send "https://www.linkedin.com/in/john-doe/" "Bonjour …"
 
 # Envoyer une INVITATION de connexion (primitive cold-outreach), avec note optionnelle (<=300 car.)
-oto linkedin connect "https://www.linkedin.com/in/john-doe/" --note "Bonjour …" --profile <dir>
+oto linkedin connect "https://www.linkedin.com/in/john-doe/" --note "Bonjour …"
 ```
 
 **Flow cold typique** : `search-people`/`employees` (trouver) → `connect --note` (inviter) → après acceptation, `send` (messager). Le message direct échoue si le contact n'est pas en 1er degré (pas de bouton « Message »).

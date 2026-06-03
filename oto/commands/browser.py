@@ -9,10 +9,20 @@ app = typer.Typer(help="Browser automation tools (LinkedIn, Crunchbase, Indeed, 
 linkedin_app = typer.Typer(help="LinkedIn scraping (profile, company, employees, search)")
 app.add_typer(linkedin_app, name="linkedin")
 
+# Default persistent profile: one logged-in LinkedIn session lives here, so the
+# common case needs no --profile flag. Override it only for multiple accounts.
+DEFAULT_LINKEDIN_PROFILE = "~/.config/browser/linkedin"
+
 
 def _linkedin_client(**kwargs):
-    """Create LinkedInClient with common options."""
+    """Create LinkedInClient with common options.
+
+    Default to the persistent profile (LinkedIn blocks injected cookies), unless
+    the caller explicitly passed a cookie or a CDP connection.
+    """
     from oto.tools.browser import LinkedInClient
+    if not kwargs.get("profile") and not kwargs.get("cookie") and not kwargs.get("cdp_url"):
+        kwargs["profile"] = DEFAULT_LINKEDIN_PROFILE
     return LinkedInClient(**kwargs)
 
 
@@ -210,7 +220,7 @@ def linkedin_messages(
 
 @linkedin_app.command("login")
 def linkedin_login(
-    profile: str = typer.Option(..., help="Chrome profile directory to provision/refresh (e.g. ~/.config/browser/linkedin)"),
+    profile: str = typer.Option(DEFAULT_LINKEDIN_PROFILE, help="Profile directory to provision/refresh (override only for multiple LinkedIn accounts)"),
     channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
 ):
     """Open a headed browser to log into LinkedIn; the session persists in <profile>.

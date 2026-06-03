@@ -57,23 +57,23 @@ is a **persistent browser profile** you log into once.
 
 ```bash
 # One-time: opens a real Chrome window — log in by hand, then CLOSE the window.
-oto linkedin login --profile ~/.config/browser/linkedin
+oto linkedin login
 ```
 
 > `login` opens a visible (headed) browser, so it needs a graphical session
 > (a desktop, or VNC on a headless server). Log in fully (including 2FA), confirm
-> you land on your feed, then close the window — the session is saved in the
-> profile directory.
+> you land on your feed, then close the window — the session is saved.
 
-Afterwards, pass that profile to every LinkedIn command:
+The session lives in a **default profile** (`~/.config/browser/linkedin`) that
+every LinkedIn command reuses automatically — no flag needed:
 
 ```bash
-oto linkedin search-people "head of finance" --profile ~/.config/browser/linkedin
-oto linkedin connect "https://www.linkedin.com/in/john-doe/" --note "Bonjour …" \
-  --profile ~/.config/browser/linkedin
+oto linkedin search-people "head of finance"
+oto linkedin connect "https://www.linkedin.com/in/john-doe/" --note "Bonjour …"
 ```
 
-No API key or secret is required for LinkedIn when you use a logged-in profile.
+`--profile <dir>` is only for juggling **multiple LinkedIn accounts**. No API key
+or secret is required for LinkedIn — the logged-in profile is the credential.
 See the `oto-browser` skill for the full command set (`oto skills show oto-browser`).
 
 ## Configuration & secrets
@@ -128,7 +128,7 @@ the equivalent.)
 The profile's session lapsed. Re-run the login:
 
 ```bash
-oto linkedin login --profile ~/.config/browser/linkedin
+oto linkedin login
 ```
 
 ### Python version error
