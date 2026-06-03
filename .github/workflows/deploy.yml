@@ -18,17 +18,10 @@ jobs:
         with:
           host: 51.15.225.121
           username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            cd /opt/oto-cli
-            git fetch origin main
-            git reset --hard origin/main
-            # oto-cli is installed editable via `pip install -e .` in oto-mcp's
-            # venv — no reinstall needed on pull unless deps change. We still
-            # restart oto-mcp so new modules (e.g. oto.tools.culture) are
-            # picked up by the registered MCP tools.
-            systemctl restart oto-mcp
-            sleep 3
-            systemctl is-active --quiet oto-mcp || (journalctl -u oto-mcp -n 50 --no-pager; exit 1)
-            journalctl -u oto-mcp -n 10 --no-pager
+          key: ${{ secrets.SSH_DEPLOY_KEY }}
+          # La clé SSH est RESTREINTE côté serveur : authorized_keys force
+          # command="/opt/deploy/oto-cli.sh" (clé persistée dans instance_keys
+          # immutable, cf. /opt/add-deploy-key.sh). sshd exécute TOUJOURS ce
+          # script et ignore le `script:` ci-dessous — gardé pour lisibilité,
+          # la source de vérité est /opt/deploy/oto-cli.sh sur le serveur.
+          script: /opt/deploy/oto-cli.sh
