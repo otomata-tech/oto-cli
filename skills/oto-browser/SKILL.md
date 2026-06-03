@@ -5,7 +5,7 @@ description: "Browser automation: free-form browsing (any URL) + LinkedIn, Crunc
 
 # Browser Automation (oto browser / oto linkedin)
 
-Prérequis : `oto` installé (pipx), `o-browser` installé (`pip install -e /data/projects/o-browser`). Pour LinkedIn, **un profil browser persistant loggé** (`oto linkedin login --profile <dir>`) — l'injection de cookie `LINKEDIN_COOKIE` dans un browser frais est bloquée par le fingerprinting TLS de LinkedIn (la session doit être créée dans le même browser qui la réutilise).
+Prérequis : `oto` installé avec l'extra browser (`pipx install "oto-cli[browser]"`, tire `o-browser`/Patchright) + **Google Chrome installé** (sinon `patchright install chromium` dans le venv). Pour LinkedIn, **un profil browser persistant loggé** (`oto linkedin login --profile <dir>`) — l'injection de cookie `LINKEDIN_COOKIE` dans un browser frais est bloquée par le fingerprinting TLS de LinkedIn (la session doit être créée dans le même browser qui la réutilise).
 
 Toutes les commandes browser tournent en headless par défaut. Ajouter `--no-headless` pour debug visuel.
 

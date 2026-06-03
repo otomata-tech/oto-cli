@@ -1,134 +1,135 @@
 # Installation
 
+`oto` is a CLI toolkit. Install it once with `pipx`, then every connector is a
+sub-command (`oto google`, `oto linkedin`, …). Each connector also ships a
+`SKILL.md` so your AI agent (Claude Code, Cursor, …) knows how to drive it.
+
 ## Prerequisites
 
-- Python 3.10+
-- pipx (recommended) or pip
+- **Python 3.10+**
+- **pipx** (recommended) — isolates the CLI in its own venv
+- **Google Chrome** — required only for the `browser` connectors (LinkedIn,
+  Crunchbase, Indeed, …). `oto` drives your installed Chrome; if Chrome is
+  absent see [Troubleshooting](#browser-no-chromechromium-found).
 
 ## Install pipx
 
-### Linux (Debian/Ubuntu)
-
 ```bash
-sudo apt update
-sudo apt install pipx
-pipx ensurepath
+# Debian/Ubuntu
+sudo apt install pipx && pipx ensurepath
+# Fedora
+sudo dnf install pipx && pipx ensurepath
+# macOS
+brew install pipx && pipx ensurepath
+# Windows (PowerShell)
+pip install --user pipx && python -m pipx ensurepath
 ```
 
-### Linux (Fedora)
+Restart your terminal after `ensurepath`.
+
+## Install oto
 
 ```bash
-sudo dnf install pipx
-pipx ensurepath
+# Base CLI (API connectors that only need HTTP)
+pipx install oto-cli
+
+# With the browser connectors (LinkedIn, Crunchbase, …)
+pipx install "oto-cli[browser]"
+
+# With Google (Gmail, Drive, Sheets, …)
+pipx install "oto-cli[google,browser]"
+
+# Everything
+pipx install "oto-cli[all]"
 ```
 
-### macOS
+Verify:
 
 ```bash
-brew install pipx
-pipx ensurepath
+oto --help
 ```
 
-### Windows
+## LinkedIn setup
 
-```powershell
-# Option 1: With scoop
-scoop install pipx
-pipx ensurepath
-
-# Option 2: With pip
-pip install --user pipx
-python -m pipx ensurepath
-```
-
-**Important:** Restart your terminal after running `ensurepath`.
-
-## Install otomata-tools
+LinkedIn no longer accepts an injected `li_at` cookie (its TLS fingerprinting
+rejects a session that wasn't created by the same browser). The reliable method
+is a **persistent browser profile** you log into once.
 
 ```bash
-# For 321founded team
-pipx install git+https://github.com/321founded/memento.git
-
-# From source repo
-pipx install git+https://github.com/AlexisLaporte/otomata-tools.git
+# One-time: opens a real Chrome window — log in by hand, then CLOSE the window.
+oto linkedin login --profile ~/.config/browser/linkedin
 ```
 
-Verify installation:
+> `login` opens a visible (headed) browser, so it needs a graphical session
+> (a desktop, or VNC on a headless server). Log in fully (including 2FA), confirm
+> you land on your feed, then close the window — the session is saved in the
+> profile directory.
+
+Afterwards, pass that profile to every LinkedIn command:
 
 ```bash
-otomata --help
+oto linkedin search-people "head of finance" --profile ~/.config/browser/linkedin
+oto linkedin connect "https://www.linkedin.com/in/john-doe/" --note "Bonjour …" \
+  --profile ~/.config/browser/linkedin
 ```
 
-## Update
+No API key or secret is required for LinkedIn when you use a logged-in profile.
+See the `oto-browser` skill for the full command set (`oto skills show oto-browser`).
+
+## Configuration & secrets
+
+Connectors that hit third-party APIs (Serper, Hunter, Attio, Pennylane, …) need
+credentials. `oto` resolves a secret in this order: **environment variable →
+configured provider → default**. The simplest provider is a flat file:
 
 ```bash
-pipx upgrade otomata
+mkdir -p ~/.otomata
+printf 'SERPER_API_KEY=xxx\nHUNTER_API_KEY=yyy\n' >> ~/.otomata/secrets.env
+oto config provider secrets file   # use the file provider
+oto config                         # show providers + which secrets are set
 ```
 
-## Uninstall
+LinkedIn-via-profile needs none of this.
+
+## Skills (for AI agents)
+
+Each connector's `SKILL.md` is an instruction manual for your agent. Symlink them
+into Claude Code:
 
 ```bash
-pipx uninstall otomata
+oto skills enable --all      # or: oto skills enable oto-browser
+oto skills list
 ```
 
-## Configuration
-
-Create a `.env.local` file in your project directory:
+## Update / uninstall
 
 ```bash
-GOOGLE_SERVICE_ACCOUNT='{"type":"service_account",...}'
-NOTION_API_KEY='ntn_xxx...'
-```
-
-See [Google Service Account Setup](google-service-account-setup.md) for detailed instructions.
-
-Verify configuration:
-
-```bash
-cd /path/to/your/project
-otomata config
-```
-
-## Alternative: pip install (in virtualenv)
-
-If you prefer using pip in a virtual environment:
-
-```bash
-# Create and activate venv
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-# or: venv\Scripts\activate  # Windows
-
-# Install
-pip install git+https://github.com/AlexisLaporte/otomata-tools.git
+pipx upgrade oto-cli
+pipx uninstall oto-cli
 ```
 
 ## Troubleshooting
 
-### Command not found after install
+### `oto: command not found`
+Run `pipx ensurepath` and restart the terminal.
 
-Run `pipx ensurepath` and restart your terminal.
-
-### Permission denied (Linux/macOS)
-
-Don't use `sudo` with pipx. If needed:
+### Browser: no Chrome/Chromium found
+`oto` prefers your installed Google Chrome. If you don't have Chrome, install a
+Chromium for Patchright inside the CLI's venv:
 
 ```bash
-pipx install --force git+https://github.com/AlexisLaporte/otomata-tools.git
+~/.local/share/pipx/venvs/oto-cli/bin/patchright install chromium
+```
+
+(On macOS/Windows the path under `pipx environment --value PIPX_LOCAL_VENVS` is
+the equivalent.)
+
+### LinkedIn: "session expired — cookie li_at is no longer valid"
+The profile's session lapsed. Re-run the login:
+
+```bash
+oto linkedin login --profile ~/.config/browser/linkedin
 ```
 
 ### Python version error
-
-Ensure Python 3.10+ is installed:
-
-```bash
-python3 --version
-```
-
-### Windows: 'pipx' is not recognized
-
-Add Python Scripts to PATH or use the full path:
-
-```powershell
-python -m pipx install git+https://github.com/AlexisLaporte/otomata-tools.git
-```
+Ensure Python 3.10+: `python3 --version`.
