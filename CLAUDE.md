@@ -28,7 +28,7 @@ oto/
 │   ├── commands/               # 1 file = 1 sub-command (auto-discovered)
 │   │   ├── google.py           # drive, docs, sheets, slides, gmail, calendar, auth
 │   │   ├── notion.py           # search, page, database
-│   │   ├── browser.py          # linkedin, crunchbase, pappers, indeed, g2, google
+│   │   ├── browser.py          # linkedin, crunchbase, pappers, indeed, g2, google, sncf, vivatech
 │   │   ├── reddit.py           # Reddit JSON API (subreddit, search, post)
 │   │   ├── fr.py               # données entreprise FR (fr_*) : recherche, bilans INPI, BODACC + sirene stock
 │   │   ├── dvf.py              # valeurs foncières (immobilier) : stats/comparables €/m² par commune ou adresse
@@ -52,12 +52,11 @@ oto/
 │   │   ├── pdf.py              # markdown → PDF via pandoc + weasyprint (bundled template)
 │   │   ├── data.py             # Datastore (per-user Google Sheets via mcp.oto.ninja, OTO_API_KEY)
 │   │   ├── ninja.py            # façade mcp.oto.ninja: secrets per-user (LinkedIn/Crunchbase/API keys), OTO_API_KEY
-│   │   ├── config.py           # config & secrets management
-│   │   └── skills.py           # Claude Code skills (enable/disable)
+│   │   └── config.py           # config & secrets management
 │   └── tools/                  # API clients
 │       ├── google/             # gmail, drive, docs, sheets, slides, calendar, keep
 │       ├── notion/             # pages, databases, search
-│       ├── browser/            # linkedin, crunchbase, pappers, indeed, g2, google
+│       ├── browser/            # linkedin, crunchbase, pappers, indeed, g2, google, sncf (vivatech = plugin o-browser-vivatech)
 │       ├── reddit/              # Reddit JSON API (no auth)
 │       ├── whatsapp/           # Node.js bridge (whatsapp-web.js)
 │       ├── sirene/             # INSEE SIRENE API
@@ -74,18 +73,17 @@ oto/
 │       ├── gemini/, openai/    # Image generation (Gemini 3 Pro, gpt-image-2)
 │       ├── pdf/                # pandoc+weasyprint wrapper, bundled CSS template (sober editorial)
 │       └── folk/, zoho/, slack/, resend/  # CRM & messaging
-├── skills/                     # Claude Code skills
-│   └── oto-*/SKILL.md          # LLM instruction manuals
 └── pyproject.toml              # entry point: oto = "oto.cli:main"
 ```
 
+Pour les agents Claude Code, le guidage vit dans le **plugin `oto`** (`otomata-tech/oto-plugin`) : un skill universel + le connecteur MCP. La CLI elle-même est auto-documentée via `--help` ; elle ne ship plus de SKILL.md.
+
 ## Adding a new connector
 
-A connector = 3 files:
+A connector = 2 files:
 
 1. **`commands/myservice.py`** — Typer app, exports `app`
 2. **`tools/myservice/`** — API client(s)
-3. **`skills/oto-myservice/SKILL.md`** — LLM instructions
 
 See `docs/create-connector.md` for details.
 
@@ -155,16 +153,9 @@ Tokens stored in `~/.otomata/google-oauth-token-{name}.json`.
 Add an account: `oto google auth <name>` — opens browser for OAuth flow.
 List accounts: `oto google auth --list`.
 
-## Skills (Claude Code)
+## Claude Code
 
-Skills = SKILL.md files in `skills/oto-*/`, symlinked to `~/.claude/skills/`.
-
-```bash
-oto skills list                    # see status
-oto skills enable --all            # enable all
-oto skills enable oto-google       # enable one
-oto skills disable oto-pennylane   # disable one
-```
+La CLI ne ship plus de skills. Le guidage agent vit dans le **plugin `oto`** (`otomata-tech/oto-plugin`) : un skill universel (doctrine d'amorçage + « découvre via `oto --help` ») + le connecteur MCP auto-configuré. Les doctrines non-évidentes par outil vont dans les help strings des commandes (`--help`), pas dans un skill.
 
 ## Deploy
 
@@ -184,8 +175,8 @@ gh release create vX.Y.Z --generate-notes dist/*
 ## Docs
 
 Detailed docs in `docs/`:
-- `concepts.md` — architecture, connector types (API/browser/SDK), secrets, output contract, skills
-- `create-connector.md` — step-by-step guide to add a connector (command + client + skill)
+- `concepts.md` — architecture, connector types (API/browser/SDK), secrets, output contract
+- `create-connector.md` — step-by-step guide to add a connector (command + client)
 - `installation.md` — setup and dependencies
 - `gmail-oauth-setup.md` — OAuth multi-account setup for Gmail
 - `gmail.md` — body format flags (markdown / html / plain) for send/reply/draft

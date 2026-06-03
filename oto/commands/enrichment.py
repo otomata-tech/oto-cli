@@ -24,7 +24,11 @@ def kaspr_enrich(
     name: Optional[str] = typer.Option(None, "--name", help="Person full name"),
     with_phone: bool = typer.Option(False, "--with-phone", help="Include phone (costs credits, reserved for UI)"),
 ):
-    """Enrich a LinkedIn profile with Kaspr (emails by default, phone opt-in)."""
+    """Enrich a LinkedIn profile with Kaspr (emails by default, phone opt-in).
+
+    --name improves match accuracy. If --with-phone is set but credits are
+    exhausted (HTTP 402), it falls back to emails-only instead of failing.
+    """
     import json
     from oto.tools.kaspr import KasprClient
 

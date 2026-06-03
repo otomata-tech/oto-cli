@@ -3,7 +3,7 @@
 Your LLM already uses `gh` for GitHub, `aws` for AWS, `gcloud` for GCP.
 **oto** covers the long tail — the SaaS products that don't have a CLI.
 
-Each connector ships with a **SKILL.md** — an instruction manual that teaches your AI agent how to use it. Run `oto skills enable --all` and your Claude Code / Cursor / Aider gets instant context on 15+ APIs.
+The CLI is self-documenting via `--help`, so your AI agent discovers every connector on its own. For Claude Code, the **`oto` plugin** ([otomata-tech/oto-plugin](https://github.com/otomata-tech/oto-plugin)) bundles a universal skill + the Oto MCP connector.
 
 ## Why CLI over MCP?
 
@@ -92,29 +92,25 @@ oto sirene search "fintech"
 oto sirene entreprises --idcc 1285,3090 --naf 90.01Z --dept 75
 ```
 
-## Skills for AI agents
+## For AI agents
 
-The killer feature: each connector comes with a SKILL.md that teaches your LLM how to use it.
+The CLI is self-documenting — agents discover everything via `--help`:
 
 ```bash
-# Enable all skills for Claude Code
-oto skills enable --all
-
-# Or pick specific ones
-oto skills enable oto-google
-oto skills enable oto-search
+oto --help                  # list namespaces
+oto <namespace> --help      # commands in a namespace
+oto <namespace> <cmd> --help   # arguments
 ```
 
-Once enabled, your AI agent sees these instructions in its context and knows exactly which `oto` commands to use, with what arguments, and what output to expect.
+For Claude Code, the **`oto` plugin** ([otomata-tech/oto-plugin](https://github.com/otomata-tech/oto-plugin)) bundles a single universal skill (entry-point doctrine) plus the Oto MCP connector — install it once instead of per-tool manuals.
 
 ## Create your own connector
 
-A connector is 3 files:
+A connector is 2 files:
 
 ```
 oto/commands/myservice.py    # CLI commands (Typer app)
 oto/tools/myservice/         # API client
-skills/oto-myservice/SKILL.md  # LLM instructions
 ```
 
 See [docs/create-connector.md](docs/create-connector.md) for the full guide.

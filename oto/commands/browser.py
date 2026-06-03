@@ -6,7 +6,7 @@ from typing import Optional
 app = typer.Typer(help="Browser automation tools (LinkedIn, Crunchbase, Indeed, Google, etc.)")
 
 # LinkedIn subcommands
-linkedin_app = typer.Typer(help="LinkedIn scraping (profile, company, employees, search)")
+linkedin_app = typer.Typer(help="LinkedIn sourcing (profile/company/search) + outreach (connect/send). Run 'oto browser linkedin login' once first — a logged-in browser profile is required; injected cookies are blocked by LinkedIn's TLS fingerprinting.")
 app.add_typer(linkedin_app, name="linkedin")
 
 # Default persistent profile: one logged-in LinkedIn session lives here, so the

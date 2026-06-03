@@ -1,8 +1,8 @@
 # Installation
 
 `oto` is a CLI toolkit. Install it once with `pipx`, then every connector is a
-sub-command (`oto google`, `oto linkedin`, …). Each connector also ships a
-`SKILL.md` so your AI agent (Claude Code, Cursor, …) knows how to drive it.
+sub-command (`oto google`, `oto linkedin`, …). The CLI is self-documenting via
+`--help`, so your AI agent (Claude Code, Cursor, …) discovers how to drive it.
 
 ## Prerequisites
 
@@ -74,7 +74,7 @@ oto linkedin connect "https://www.linkedin.com/in/john-doe/" --note "Bonjour …
 
 `--profile <dir>` is only for juggling **multiple LinkedIn accounts**. No API key
 or secret is required for LinkedIn — the logged-in profile is the credential.
-See the `oto-browser` skill for the full command set (`oto skills show oto-browser`).
+Run `oto browser linkedin --help` for the full command set.
 
 ## Configuration & secrets
 
@@ -91,14 +91,15 @@ oto config                         # show providers + which secrets are set
 
 LinkedIn-via-profile needs none of this.
 
-## Skills (for AI agents)
+## Claude Code
 
-Each connector's `SKILL.md` is an instruction manual for your agent. Symlink them
-into Claude Code:
+The CLI is self-documenting (`oto --help`, `oto <namespace> --help`). For Claude
+Code, install the **`oto` plugin** — it bundles a universal skill + the Oto MCP
+connector:
 
 ```bash
-oto skills enable --all      # or: oto skills enable oto-browser
-oto skills list
+claude plugin marketplace add otomata-tech/oto-plugin
+claude plugin install oto@otomata-oto
 ```
 
 ## Update / uninstall

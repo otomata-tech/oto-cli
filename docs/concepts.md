@@ -8,7 +8,7 @@ But most SaaS products don't have a CLI. When an AI agent needs to interact with
 1. **MCP** — a protocol that puts the full API schema in the LLM's context window (expensive: 4-32x more tokens, 72% reliability)
 2. **CLI** — a command-line tool the LLM calls via Bash (cheap: ~80 tokens, 100% reliability)
 
-**oto is option 2.** One CLI, many connectors, each with an LLM instruction manual (SKILL.md).
+**oto is option 2.** One CLI, many connectors, self-documenting via `--help`.
 
 ## Architecture
 
@@ -26,19 +26,16 @@ No registry, no config. Drop a file, it works.
 
 ### Connector anatomy
 
-A connector is 3 parts:
+A connector is 2 parts:
 
 ```
 commands/myservice.py          # CLI layer (Typer commands)
 tools/myservice/client.py      # API client (business logic)
-skills/oto-myservice/SKILL.md  # LLM instructions
 ```
 
-**Commands** define the CLI surface — arguments, options, help text. They import the tool client lazily (inside the function body) so the CLI starts fast.
+**Commands** define the CLI surface — arguments, options, help text. They import the tool client lazily (inside the function body) so the CLI starts fast. Clear `--help` strings are how agents discover the connector.
 
 **Tool clients** talk to the API. They use `get_secret()` for auth and return plain Python dicts/lists.
-
-**Skills** are markdown files that teach the LLM how to use the connector. They get symlinked into `~/.claude/skills/` and appear in the agent's context.
 
 ### Connector types
 
@@ -112,25 +109,8 @@ oto sirene search "fintech" | jq '.[] | .siren'
 
 Errors go to stderr. Exit code 0 = success, 1 = error. This makes oto composable with standard Unix tools.
 
-### Skills (SKILL.md)
+### Claude Code
 
-A SKILL.md is a markdown file with YAML frontmatter:
-
-```markdown
----
-name: oto-search
-description: Web and news search via Serper (Google)
----
-
-# Search
-Use `oto search` commands via Bash.
-...
-```
-
-When symlinked to `~/.claude/skills/`, the LLM sees this file in its context and learns when and how to use the connector. The `description` field is what the LLM uses to decide if the skill is relevant.
-
-```bash
-oto skills enable oto-search    # creates symlink
-oto skills disable oto-search   # removes symlink
-oto skills list                 # shows status
-```
+The CLI ships no skills. Agents discover connectors via `--help`; for Claude Code,
+the **`oto` plugin** (`otomata-tech/oto-plugin`) provides a single universal skill
+(entry-point doctrine) plus the Oto MCP connector.

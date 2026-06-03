@@ -1,6 +1,7 @@
 # Create a connector
 
-A connector is a triplet: **command** + **tool client** + **skill**.
+A connector is a pair: **command** + **tool client**. Write clear `--help`
+strings — that's how agents (and the `oto` plugin's universal skill) discover it.
 
 ## 1. Command file
 
@@ -119,37 +120,7 @@ Add the SDK to `pyproject.toml` optional dependencies. See `tools/google/` for t
 
 `get_secret()` raises a `ValueError` with setup instructions if the key is missing — caught by `main()` in cli.py.
 
-## 3. Skill file
-
-Create `skills/oto-myservice/SKILL.md`:
-
-```markdown
----
-name: oto-myservice
-description: MyService API — search, list, manage items
----
-
-# MyService
-
-Use `oto myservice` commands via Bash.
-
-## Commands
-
-\`\`\`bash
-oto myservice list "query" -n 10    # List items
-\`\`\`
-
-## Output
-
-JSON on stdout. Example:
-\`\`\`json
-[{"id": "123", "name": "Item"}]
-\`\`\`
-```
-
-Enable with: `oto skills enable oto-myservice`
-
-## 4. Optional: add to pyproject.toml
+## 3. Optional: add to pyproject.toml
 
 If your connector needs extra Python dependencies, add an optional group:
 
