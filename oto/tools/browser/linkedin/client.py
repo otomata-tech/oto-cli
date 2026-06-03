@@ -59,6 +59,33 @@ def get_worker_cookie(
 MAX_SESSIONS_PER_IDENTITY = 3
 SEMAPHORE_DIR = Path("/tmp/linkedin_sessions")
 
+_ACCOUNT_URL = "https://app.oto.ninja/connections"
+
+
+class LinkedInAuthWallError(RuntimeError):
+    """LinkedIn served a login/auth-wall — the active session no longer authenticates.
+
+    `mode` is "profile" or "cookie": the remediation differs and downstream callers
+    (oto-mcp) branch on it. A profile that's logged out must be **re-paired** (the
+    cookie is ignored while a profile exists) ; a dead cookie must be **refreshed**.
+    Subclasses RuntimeError so existing `except RuntimeError` handlers still catch it.
+    """
+
+    def __init__(self, mode: str):
+        self.mode = mode
+        if mode == "profile":
+            msg = (
+                "LinkedIn browser profile is logged out — its stored session no longer "
+                f"authenticates. Re-pair the profile on {_ACCOUNT_URL} (LinkedIn → "
+                "browser session). The li_at cookie is ignored while a profile exists."
+            )
+        else:
+            msg = (
+                "LinkedIn session expired — cookie li_at is no longer valid. "
+                f"Update it on {_ACCOUNT_URL} or via the Oto Companion extension."
+            )
+        super().__init__(msg)
+
 
 class LinkedInClient(ProfileMixin, CompanyMixin, MessagesMixin, OutreachMixin, SearchMixin, BrowserClient):
     """
@@ -186,19 +213,16 @@ class LinkedInClient(ProfileMixin, CompanyMixin, MessagesMixin, OutreachMixin, S
 
     # --- Auth wall detection ---
 
-    _AUTH_WALL_MSG = (
-        "LinkedIn session expired — cookie li_at is no longer valid. "
-        "Update it on https://oto.ninja/account or via the Oto Companion extension."
-    )
-
     async def _raise_if_auth_wall(self):
-        """Raise RuntimeError if LinkedIn shows a login/authwall (expired cookie).
+        """Raise LinkedInAuthWallError if LinkedIn shows a login/authwall.
 
-        Checks both URL redirect and DOM indicators (overlay on same URL).
+        The error is mode-aware (profile vs cookie) so callers surface the right
+        remediation. Checks both URL redirect and DOM indicators (overlay on same URL).
         """
+        mode = "profile" if self._use_profile else "cookie"
         url = self.page.url
         if any(p in url for p in ("/login", "/authwall", "/checkpoint/lg/", "/uas/login")):
-            raise RuntimeError(self._AUTH_WALL_MSG)
+            raise LinkedInAuthWallError(mode)
 
         is_wall = await self.page.evaluate("""() => {
             if (document.querySelector('[class*="authwall"], .authwall-join-form'))
@@ -208,7 +232,7 @@ class LinkedInClient(ProfileMixin, CompanyMixin, MessagesMixin, OutreachMixin, S
             return false;
         }""")
         if is_wall:
-            raise RuntimeError(self._AUTH_WALL_MSG)
+            raise LinkedInAuthWallError(mode)
 
     # --- Rate limiting ---
 
