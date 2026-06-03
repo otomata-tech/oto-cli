@@ -37,6 +37,7 @@ oto/
 │   │   ├── serper.py           # direct Serper API (web, news, scrape, suggestions)
 │   │   ├── enrichment.py       # kaspr, hunter, lemlist
 │   │   ├── pennylane.py        # accounting
+│   │   ├── gocardless.py       # GoCardless direct-debit (read-only; MCP `gocardless_*` masqué par défaut)
 │   │   ├── anthropic.py        # usage, cost, summary
 │   │   ├── attio.py            # Attio CRM (contacts, companies, deals, tasks)
 │   │   ├── folk.py             # Folk CRM
@@ -64,6 +65,7 @@ oto/
 │       ├── serper/             # Google search (web, news)
 │       ├── anthropic/          # Admin API (usage, costs)
 │       ├── pennylane/          # Accounting
+│       ├── gocardless/         # GoCardless API Pro (read-only)
 │       ├── attio/              # Attio CRM
 │       ├── datastore/          # HTTP client → mcp.oto.ninja /api/datastore/*
 │       ├── ninja/              # HTTP client → mcp.oto.ninja /api/settings/* (secrets per-user)
