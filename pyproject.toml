@@ -35,7 +35,7 @@ google = [
     "markdown>=3.5",
 ]
 browser = [
-    "o-browser",
+    "o-browser>=0.4.0",
 ]
 # Site adapters = o-browser plugins (entry-point group "o_browser.sites"), à la carte.
 vivatech = [
