@@ -6,7 +6,7 @@ from typing import Optional
 app = typer.Typer(help="Browser automation tools (LinkedIn, Crunchbase, Indeed, Google, etc.)")
 
 # LinkedIn subcommands
-linkedin_app = typer.Typer(help="LinkedIn sourcing (profile/company/search) + outreach (connect/send). Run 'oto browser linkedin login' once first — a logged-in browser profile is required; injected cookies are blocked by LinkedIn's TLS fingerprinting.")
+linkedin_app = typer.Typer(help="LinkedIn sourcing (profile/company/search) + outreach (connect/send). Run 'oto browser linkedin login' once first — a logged-in local browser profile is the robust path. Injected cookies work only with the real Google Chrome channel (matching TLS fingerprint); sharing one cookie to a server logs the user out — prefer the local profile.")
 app.add_typer(linkedin_app, name="linkedin")
 
 # Default persistent profile: one logged-in LinkedIn session lives here, so the
@@ -23,6 +23,11 @@ def _linkedin_client(**kwargs):
     from oto.tools.browser import LinkedInClient
     if not kwargs.get("profile") and not kwargs.get("cookie") and not kwargs.get("cdp_url"):
         kwargs["profile"] = DEFAULT_LINKEDIN_PROFILE
+    # LinkedIn requires the real Google Chrome: the bundled Chromium's TLS
+    # fingerprint gets flagged. Default to it (matching the MCP) so callers
+    # never silently fall back to Chromium.
+    if not kwargs.get("channel"):
+        kwargs["channel"] = "chrome"
     return LinkedInClient(**kwargs)
 
 
@@ -33,7 +38,7 @@ def linkedin_profile(
     cdp_url: Optional[str] = typer.Option(None, "--cdp-url", help="Connect to existing Chrome via CDP"),
     identity: str = typer.Option("default", help="Identity for rate limiting"),
     profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
-    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Browser channel (defaults to 'chrome' for LinkedIn; the bundled Chromium is flagged)"),
     no_rate_limit: bool = typer.Option(False, "--no-rate-limit", help="Disable rate limiting"),
     headless: bool = typer.Option(True, help="Run headless"),
 ):
@@ -56,7 +61,7 @@ def linkedin_company(
     cdp_url: Optional[str] = typer.Option(None, "--cdp-url", help="Connect to existing Chrome via CDP"),
     identity: str = typer.Option("default", help="Identity for rate limiting"),
     profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
-    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Browser channel (defaults to 'chrome' for LinkedIn; the bundled Chromium is flagged)"),
     no_rate_limit: bool = typer.Option(False, "--no-rate-limit", help="Disable rate limiting"),
     headless: bool = typer.Option(True, help="Run headless"),
 ):
@@ -79,7 +84,7 @@ def linkedin_search(
     cookie: Optional[str] = typer.Option(None, envvar="LINKEDIN_COOKIE", help="li_at cookie"),
     cdp_url: Optional[str] = typer.Option(None, "--cdp-url", help="Connect to existing Chrome via CDP"),
     profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
-    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Browser channel (defaults to 'chrome' for LinkedIn; the bundled Chromium is flagged)"),
     no_rate_limit: bool = typer.Option(False, "--no-rate-limit", help="Disable rate limiting"),
     headless: bool = typer.Option(True, help="Run headless"),
 ):
@@ -102,7 +107,7 @@ def linkedin_people(
     cookie: Optional[str] = typer.Option(None, envvar="LINKEDIN_COOKIE", help="li_at cookie"),
     cdp_url: Optional[str] = typer.Option(None, "--cdp-url", help="Connect to existing Chrome via CDP"),
     profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
-    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Browser channel (defaults to 'chrome' for LinkedIn; the bundled Chromium is flagged)"),
     no_rate_limit: bool = typer.Option(False, "--no-rate-limit", help="Disable rate limiting"),
     headless: bool = typer.Option(True, help="Run headless"),
 ):
@@ -126,7 +131,7 @@ def linkedin_employees(
     cookie: Optional[str] = typer.Option(None, envvar="LINKEDIN_COOKIE", help="li_at cookie"),
     cdp_url: Optional[str] = typer.Option(None, "--cdp-url", help="Connect to existing Chrome via CDP"),
     profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
-    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Browser channel (defaults to 'chrome' for LinkedIn; the bundled Chromium is flagged)"),
     no_rate_limit: bool = typer.Option(False, "--no-rate-limit", help="Disable rate limiting"),
     headless: bool = typer.Option(True, help="Run headless"),
 ):
@@ -153,7 +158,7 @@ def linkedin_search_people(
     cookie: Optional[str] = typer.Option(None, envvar="LINKEDIN_COOKIE", help="li_at cookie"),
     cdp_url: Optional[str] = typer.Option(None, "--cdp-url", help="Connect to existing Chrome via CDP"),
     profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
-    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Browser channel (defaults to 'chrome' for LinkedIn; the bundled Chromium is flagged)"),
     no_rate_limit: bool = typer.Option(False, "--no-rate-limit", help="Disable rate limiting"),
     headless: bool = typer.Option(True, help="Run headless"),
 ):
@@ -176,7 +181,7 @@ def linkedin_posts(
     cookie: Optional[str] = typer.Option(None, envvar="LINKEDIN_COOKIE", help="li_at cookie"),
     cdp_url: Optional[str] = typer.Option(None, "--cdp-url", help="Connect to existing Chrome via CDP"),
     profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
-    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Browser channel (defaults to 'chrome' for LinkedIn; the bundled Chromium is flagged)"),
     no_rate_limit: bool = typer.Option(False, "--no-rate-limit", help="Disable rate limiting"),
     headless: bool = typer.Option(True, help="Run headless"),
 ):
@@ -200,7 +205,7 @@ def linkedin_messages(
     cookie: Optional[str] = typer.Option(None, envvar="LINKEDIN_COOKIE", help="li_at cookie"),
     cdp_url: Optional[str] = typer.Option(None, "--cdp-url", help="Connect to existing Chrome via CDP"),
     profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
-    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Browser channel (defaults to 'chrome' for LinkedIn; the bundled Chromium is flagged)"),
     no_rate_limit: bool = typer.Option(False, "--no-rate-limit", help="Disable rate limiting"),
     headless: bool = typer.Option(True, help="Run headless"),
 ):
@@ -221,13 +226,17 @@ def linkedin_messages(
 @linkedin_app.command("login")
 def linkedin_login(
     profile: str = typer.Option(DEFAULT_LINKEDIN_PROFILE, help="Profile directory to provision/refresh (override only for multiple LinkedIn accounts)"),
-    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Browser channel (defaults to 'chrome'). LinkedIn requires the real Google Chrome — the bundled Chromium is flagged; only override if you know what you're doing"),
 ):
     """Open a headed browser to log into LinkedIn; the session persists in <profile>.
 
     Run once per profile. Cookie injection is blocked by LinkedIn's TLS
     fingerprinting — a session created inside this same browser is the only
     reliable way to authenticate scraping/outreach afterwards.
+
+    Requires the real Google Chrome installed (used by default). The bundled
+    Chromium has a different TLS fingerprint and gets flagged by LinkedIn — it
+    is never used for LinkedIn.
     """
     import asyncio
     import json
@@ -256,7 +265,7 @@ def linkedin_send(
     cdp_url: Optional[str] = typer.Option(None, "--cdp-url", help="Connect to existing Chrome via CDP"),
     identity: str = typer.Option("default", help="Identity for rate limiting"),
     profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
-    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Browser channel (defaults to 'chrome' for LinkedIn; the bundled Chromium is flagged)"),
     no_rate_limit: bool = typer.Option(False, "--no-rate-limit", help="Disable rate limiting"),
     headless: bool = typer.Option(True, help="Run headless"),
 ):
@@ -280,7 +289,7 @@ def linkedin_connect(
     cdp_url: Optional[str] = typer.Option(None, "--cdp-url", help="Connect to existing Chrome via CDP"),
     identity: str = typer.Option("default", help="Identity for rate limiting"),
     profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
-    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Browser channel (defaults to 'chrome' for LinkedIn; the bundled Chromium is flagged)"),
     no_rate_limit: bool = typer.Option(False, "--no-rate-limit", help="Disable rate limiting"),
     headless: bool = typer.Option(True, help="Run headless"),
 ):
@@ -300,7 +309,7 @@ def google_search(
     query: str = typer.Option(..., "--query", "-q", help="Search query"),
     num: int = typer.Option(10, "--num", "-n", help="Number of results"),
     profile: Optional[str] = typer.Option(None, help="Chrome profile directory path"),
-    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Chrome channel"),
+    channel: Optional[str] = typer.Option(None, envvar="BROWSER_CHANNEL", help="Browser channel (e.g. 'chrome' to use the real Google Chrome)"),
     headless: bool = typer.Option(True, help="Run headless"),
 ):
     """Search Google via browser automation."""

@@ -3,6 +3,50 @@
 A connector is a pair: **command** + **tool client**. Write clear `--help`
 strings — that's how agents (and the `oto` plugin's universal skill) discover it.
 
+## Core vs custom/client connector — where does it live?
+
+`oto-cli` is a **public** repo, published to **public PyPI** (source readable by
+anyone). Decide before writing a line of code:
+
+- **Core connector** — generic / open-data / mainstream SaaS (fr, dvf, culture,
+  serper, reddit, attio…). Lives **in this repo** (`oto/commands/` +
+  `oto/tools/`), discovered by the filesystem glob in `cli.py`. PR welcome.
+- **Custom / client-specific connector** — anything that exposes a client's
+  internals, a private workflow, a reverse-engineered auth, or a confidential
+  endpoint. **Never in this repo.** It must be a **separate package** (usually
+  private) that plugs into the CLI via the `oto.commands` **entry-point group**.
+
+The entry-point path means you never patch the public `cli.py` to add a private
+command. Install the private package in the same environment as `oto-cli` and
+`oto <name>` appears automatically. This is symmetric to the `o_browser.sites`
+entry-point group used for site adapters.
+
+### Writing a custom connector as an entry-point package
+
+A standalone package with its own top-level module (e.g. `oto_mm`, **not**
+`oto.commands.*` — that namespace belongs to the public core):
+
+```toml
+# pyproject.toml of the private package
+[project]
+name = "oto-myclient"
+dependencies = ["oto-cli>=1.1.0", "requests>=2.28", "typer>=0.12"]
+
+[project.entry-points."oto.commands"]
+myclient = "oto_myclient.commands:app"   # name = the `oto <name>` sub-command
+```
+
+```python
+# oto_myclient/commands.py
+import typer
+app = typer.Typer(help="My client — short description")
+# ... @app.command(...) as usual
+```
+
+Install: `pipx inject oto-cli oto-myclient@git+ssh://...` (or `pip install` in a
+venv). Reference: the `oto-mm` package (Movinmotion, private) and issue
+otomata-tech/oto-cli#9.
+
 ## 1. Command file
 
 Create `oto/commands/myservice.py`:

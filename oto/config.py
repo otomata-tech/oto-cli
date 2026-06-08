@@ -104,14 +104,43 @@ def get_search_provider() -> str:
     return _get_oto_config().get("search_provider", "serper")
 
 
+_MISSING = object()
+
+
+def _file_provider_lookup(name: str):
+    """Look `name` up in the file provider (project secrets, then user secrets).
+
+    Returns the value, or the `_MISSING` sentinel when not present (so an empty
+    string stored on purpose is distinguishable from "not found").
+    """
+    project_secrets = _find_project_secrets()
+    if project_secrets:
+        secrets = _parse_env_file(project_secrets)
+        if name in secrets:
+            return secrets[name]
+    user_secrets = _get_user_secrets()
+    secrets = _parse_env_file(user_secrets)
+    if name in secrets:
+        return secrets[name]
+    return _MISSING
+
+
 def get_secret(name: str, default: Optional[str] = None) -> Optional[str]:
     """
     Get a secret value.
 
     Resolution order:
     1. Environment variable (always, highest priority)
-    2. Configured provider (file or scaleway)
-    3. Default value
+    2. Configured provider (sops / scaleway / file)
+    3. Local file provider as a graceful fallback when the configured provider
+       has no backing store (e.g. fresh/third-party install with sops default
+       but no SOPS repo cloned)
+    4. Default value
+
+    `get_secret` is the soft accessor: it honours its contract and returns
+    `default` when a secret can't be resolved — it never raises just because a
+    provider's store is absent. The hard failure (with guidance) belongs to
+    `require_secret`.
 
     Args:
         name: Secret name (e.g., 'GROQ_API_KEY', 'SIRENE_API_KEY')
@@ -125,33 +154,40 @@ def get_secret(name: str, default: Optional[str] = None) -> Optional[str]:
     if env_val:
         return env_val
 
-    # 2. Configured provider
+    # 2. Configured provider. `store_missing` marks the case where the provider
+    #    is configured but has no backing store, so we can fall back to the
+    #    local file provider instead of failing.
     provider = get_provider()
+    store_missing = False
     if provider == "sops":
         from oto.sops_secrets import fetch_secrets as _sops_fetch
         cfg = _get_oto_config()
-        secrets = _sops_fetch(
-            path=cfg.get("sops_file"),
-            dir_path=cfg.get("sops_dir"),
-        )
-        if name in secrets:
-            return secrets[name]
+        try:
+            secrets = _sops_fetch(
+                path=cfg.get("sops_file"),
+                dir_path=cfg.get("sops_dir"),
+            )
+            if name in secrets:
+                return secrets[name]
+        except FileNotFoundError:
+            store_missing = True
     elif provider == "scaleway":
         from oto.scaleway_secrets import fetch_secrets
         secrets = fetch_secrets()
         if name in secrets:
             return secrets[name]
     else:
-        # File provider: project secrets then user secrets
-        project_secrets = _find_project_secrets()
-        if project_secrets:
-            secrets = _parse_env_file(project_secrets)
-            if name in secrets:
-                return secrets[name]
-        user_secrets = _get_user_secrets()
-        secrets = _parse_env_file(user_secrets)
-        if name in secrets:
-            return secrets[name]
+        # File provider is the primary lookup.
+        value = _file_provider_lookup(name)
+        if value is not _MISSING:
+            return value
+
+    # 3. Graceful fallback to local file secrets when the configured provider's
+    #    store is absent (sops default but no SOPS repo on a third-party box).
+    if store_missing:
+        value = _file_provider_lookup(name)
+        if value is not _MISSING:
+            return value
 
     return default
 
@@ -190,11 +226,15 @@ def require_secret(name: str) -> str:
     """
     value = get_secret(name)
     if value is None:
+        provider = get_provider()
         raise ValueError(
             f"Required secret '{name}' not found. Set it via:\n"
-            f"  - Environment variable: export {name}='...'\n"
-            f"  - SOPS file (default provider): `sops ~/.otomata/secrets/secrets.yaml` then add the key\n"
-            f"  - Or fall back to file/scaleway providers in ~/.otomata/config.yaml"
+            f"  - Environment variable: export {name}='...'  (always wins, simplest)\n"
+            f"  - Local file provider: `oto config provider secrets file`, then add\n"
+            f"    {name}=... to ~/.otomata/secrets.env\n"
+            f"  - SOPS provider (otomata infra): keep `secret_provider: sops` and add the\n"
+            f"    key to your SOPS store\n"
+            f"  (current provider: {provider})"
         )
     return value
 

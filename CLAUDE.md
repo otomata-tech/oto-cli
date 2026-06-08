@@ -80,10 +80,16 @@ Pour les agents Claude Code, le guidage vit dans le **plugin `oto`** (`otomata-t
 
 ## Adding a new connector
 
-A connector = 2 files:
+A **core** connector = 2 files (ce repo, public) :
 
 1. **`commands/myservice.py`** — Typer app, exports `app`
 2. **`tools/myservice/`** — API client(s)
+
+⚠️ Ce repo est **public + PyPI public**. Un connecteur **custom/client** (auth
+reverse-engineerée, infra d'un client, endpoint confidentiel) ne va **jamais**
+ici : package séparé (privé) qui se branche via l'entry-point `oto.commands`
+(découvert par `cli.py`, symétrique à `o_browser.sites`). Ex. `oto-mm`
+(Movinmotion). Cf. `docs/create-connector.md` (section core vs custom) + issue #9.
 
 See `docs/create-connector.md` for details.
 
@@ -165,10 +171,18 @@ Push main déclenche `.github/workflows/deploy.yml` qui SSH tuls.me, `git reset 
 
 Pour publier sur PyPI (autres utilisateurs hors infra Otomata). PyPI token in SOPS (`PYPI_TOKEN`).
 
+`hatch build/publish` ne marche pas sur cette machine (pas de `python`, hatchling non bootstrappé).
+Passer par `build` + `twine` dans un venv dédié, et builder depuis `git archive HEAD` pour exclure
+le WIP non commité de la release.
+
 ```bash
-# Bump version in oto/__init__.py, then:
-hatch build && hatch publish -u __token__ \
-  -a "$(sops --decrypt --extract '["PYPI_TOKEN"]' ~/.otomata/secrets/secrets/secrets.yaml)"
+# Bump version dans oto/__init__.py, commit + push, puis :
+python3 -m venv /tmp/buildenv && /tmp/buildenv/bin/pip install build twine
+rm -rf /tmp/rel && git archive HEAD | tar -x -C /tmp/rel && cd /tmp/rel
+/tmp/buildenv/bin/python -m build
+TWINE_USERNAME=__token__ \
+TWINE_PASSWORD="$(sops --decrypt --extract '["PYPI_TOKEN"]' ~/.otomata/secrets/secrets.yaml)" \
+  /tmp/buildenv/bin/twine upload dist/*
 gh release create vX.Y.Z --generate-notes dist/*
 ```
 
