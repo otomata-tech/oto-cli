@@ -79,3 +79,12 @@ def party(payment_id: str = typer.Argument(..., help="ID prélèvement (PM…)")
 def failure(payment_id: str = typer.Argument(..., help="ID prélèvement (PM…)")):
     """Motif du dernier échec (cause, description, will_attempt_retry)."""
     _out(_client().failure_reason(payment_id))
+
+
+@app.command("failed")
+def failed(
+    since: Optional[str] = typer.Option(None, "--since", help="Créés après (ISO8601, ex 2026-05-25)"),
+    limit: int = typer.Option(200, "--limit", "-n", help="Taille de page des failed à enrichir (max 500)"),
+):
+    """Prélèvements refusés enrichis (client + motif + état mandat) en un appel."""
+    _out(_client().failed_payments(since=since, limit=limit))

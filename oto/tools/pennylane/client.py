@@ -103,6 +103,35 @@ class PennylaneClient:
 
         return {"error": "Max retries exceeded"}
 
+    def delete(self, endpoint: str, retries: int = 3) -> dict:
+        """DELETE a resource on Pennylane API with retry on rate limit."""
+        url = f"{self.BASE_URL}/{endpoint}"
+
+        for attempt in range(retries):
+            try:
+                response = self.session.delete(url, timeout=30)
+
+                if response.status_code == 429:
+                    wait_time = 2 ** attempt
+                    time.sleep(wait_time)
+                    continue
+
+                if not response.ok:
+                    return {
+                        "error": str(response.status_code),
+                        "details": response.text,
+                        "status_code": response.status_code,
+                    }
+
+                if response.status_code == 204 or not response.content:
+                    return {"ok": True}
+
+                return response.json()
+            except Exception as e:
+                return {"error": str(e)}
+
+        return {"error": "Max retries exceeded"}
+
     def fetch(self, endpoint: str, params: Optional[dict] = None, retries: int = 3) -> dict:
         """
         Fetch data from Pennylane API with retry on rate limit.
@@ -249,6 +278,18 @@ class PennylaneClient:
         """Get bank transactions."""
         return self.fetch_all_pages("transactions", max_pages=max_pages)
 
+    # --- Matching (lettrage) ---
+
+    def match_transaction(self, invoice_id: int, transaction_id: int,
+                          invoice_type: str = "customer") -> dict:
+        """Lettre (reconcile) a bank transaction with an invoice.
+
+        Reversible accounting link, not a new entry. invoice_type is
+        "customer" (ventes) or "supplier" (achats).
+        """
+        endpoint = f"{invoice_type}_invoices/{invoice_id}/matched_transactions"
+        return self.post(endpoint, {"transaction_id": transaction_id})
+
     # --- File Attachments ---
 
     def upload_file(self, file_path: str) -> dict:
@@ -358,6 +399,11 @@ class PennylaneClient:
     def finalize_invoice(self, invoice_id: int) -> dict:
         """Finalize a draft invoice."""
         return self.put(f"customer_invoices/{invoice_id}/finalize", {})
+
+    def delete_invoice(self, invoice_id: int) -> dict:
+        """Delete a draft customer invoice. Only drafts can be deleted;
+        finalized invoices must be cancelled with a credit note instead."""
+        return self.delete(f"customer_invoices/{invoice_id}")
 
     def send_invoice(self, invoice_id: int) -> dict:
         """Send a finalized invoice to the customer by email (uses customer's email on file)."""

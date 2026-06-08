@@ -20,12 +20,25 @@ Usage :
     party = client.payment_party(failed[0]["id"])   # customer + motif résolu
 """
 
+import re
 import time
 from typing import Optional
 
 import requests
 
 from ...config import require_secret
+
+
+def _to_rfc3339(value: Optional[str]) -> Optional[str]:
+    """Normalise une date pour les filtres GoCardless `created_at[*]`.
+
+    L'API exige un date-time RFC3339 — une date nue (`2026-05-25`) renvoie
+    une 422 « not a valid date-time ». On complète le début de journée UTC.
+    Un timestamp déjà complet est laissé tel quel.
+    """
+    if value and re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        return f"{value}T00:00:00.000Z"
+    return value
 
 
 class GoCardlessClient:
@@ -122,7 +135,7 @@ class GoCardlessClient:
         if customer:
             params["customer"] = customer
         if created_gt:
-            params["created_at[gt]"] = created_gt
+            params["created_at[gt]"] = _to_rfc3339(created_gt)
         return self.fetch("payments", params).get("payments", [])
 
     def get_payment(self, payment_id: str) -> dict:
@@ -183,6 +196,54 @@ class GoCardlessClient:
             "name": name,
             "metadata": customer.get("metadata", {}),
         }
+
+    def failed_payments(self, since: Optional[str] = None, limit: int = 200) -> list:
+        """Prélèvements échoués enrichis, en un seul appel agent.
+
+        Fait la tuyauterie côté outil : liste les `failed`, puis pour chaque
+        ligne résout mandat → customer (nom/email) et le motif d'échec
+        (Events API). Le paiement vient déjà de la liste, donc seulement
+        mandat + customer + events sont re-tapés par ligne.
+
+        ⚠️ Faits seulement — pas d'action décidée ici. « Relancer vs refaire
+        un mandat » est un jugement métier qui reste à l'agent/la doctrine.
+
+        Args:
+            since: ISO8601 (ex '2026-05-25'), filtre sur la date de création.
+                Note : un paiement créé avant `since` mais échoué après ne
+                ressort pas (l'API GCL filtre sur created_at).
+            limit: taille de page des `failed` à enrichir (max 500).
+        """
+        payments = self.list_payments(status="failed", limit=limit, created_gt=since)
+        if isinstance(payments, dict):  # erreur remontée
+            return payments
+        rows = []
+        for p in payments:
+            mandate_id = p.get("links", {}).get("mandate")
+            mandate = self.get_mandate(mandate_id) if mandate_id else {}
+            customer_id = mandate.get("links", {}).get("customer")
+            customer = self.get_customer(customer_id) if customer_id else {}
+            name = customer.get("company_name") or " ".join(
+                filter(None, [customer.get("given_name"), customer.get("family_name")])
+            )
+            fail = self.failure_reason(p["id"])
+            rows.append({
+                "payment_id": p["id"],
+                "name": name,
+                "email": customer.get("email"),
+                "amount": p.get("amount", 0) / 100,
+                "currency": p.get("currency"),
+                "charge_date": p.get("charge_date"),
+                "failed_at": fail.get("created_at"),
+                "cause": fail.get("cause"),
+                "reason_code": fail.get("reason_code"),
+                "will_attempt_retry": fail.get("will_attempt_retry"),
+                "mandate_id": mandate_id,
+                "mandate_status": mandate.get("status"),
+            })
+            time.sleep(self.rate_limit_delay)
+        rows.sort(key=lambda r: r.get("failed_at") or "", reverse=True)
+        return rows
 
     def failure_reason(self, payment_id: str) -> dict:
         """Motif du dernier échec d'un prélèvement (Events API).

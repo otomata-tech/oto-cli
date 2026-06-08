@@ -141,8 +141,7 @@ def match_transaction(
     invoice_type: str = typer.Option("supplier", "--type", "-t", help="supplier or customer"),
 ):
     """Match a transaction to an invoice."""
-    endpoint = f"{invoice_type}_invoices/{invoice_id}/matched_transactions"
-    _out(_client().post(endpoint, {"transaction_id": transaction_id}))
+    _out(_client().match_transaction(invoice_id, transaction_id, invoice_type))
 
 
 # --- Customers ---
@@ -324,6 +323,18 @@ def finalize_invoice(
 ):
     """Finalize a draft invoice."""
     _out(_client().finalize_invoice(invoice_id))
+
+
+@app.command("delete-invoice")
+def delete_invoice(
+    invoice_id: int = typer.Argument(..., help="Draft invoice ID to delete"),
+):
+    """Delete a draft customer invoice.
+
+    Only drafts can be deleted. A finalized invoice cannot — it must be
+    cancelled with a credit note.
+    """
+    _out(_client().delete_invoice(invoice_id))
 
 
 @app.command("send-invoice")
