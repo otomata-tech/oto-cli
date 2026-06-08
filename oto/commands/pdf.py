@@ -28,13 +28,20 @@ def md(
     The document title/subtitle should be set via YAML frontmatter
     (title:, subtitle:) in the markdown — not via --metadata title.
     """
+    import warnings
+
     from oto.tools.pdf import generate_pdf, PdfError
 
-    try:
-        out = generate_pdf(input_md, output, template)
-    except PdfError as e:
-        typer.echo(f"Error: {e}", err=True)
-        raise typer.Exit(code=1)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        try:
+            out = generate_pdf(input_md, output, template)
+        except PdfError as e:
+            typer.echo(f"Error: {e}", err=True)
+            raise typer.Exit(code=1)
+
+    for w in caught:
+        typer.secho(f"⚠ {w.message}", err=True, fg=typer.colors.YELLOW)
 
     typer.echo(str(out))
 

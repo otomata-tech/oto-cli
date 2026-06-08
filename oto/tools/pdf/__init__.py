@@ -27,11 +27,18 @@ def generate_pdf(
     output_pdf: Path | str | None = None,
     template_css: Path | str | None = None,
     standalone: bool = True,
+    lint: bool = True,
 ) -> Path:
     """Render a markdown file to PDF via pandoc + weasyprint.
 
     The document title/subtitle should be set in the markdown's YAML
     frontmatter (`title:` and `subtitle:`), not passed via --metadata title.
+
+    When ``lint`` is true (default), the markdown is checked for pitfalls that
+    pandoc renders wrong — currently lists glued to the preceding paragraph
+    (missing blank line). Each issue raises a ``warnings.warn`` (so the CLI/MCP
+    can alert); the file is rendered as-is, not modified — the author fixes the
+    source.
     """
     _check_dependencies()
 
@@ -53,6 +60,13 @@ def generate_pdf(
     )
     if not css.exists():
         raise PdfError(f"Template CSS not found: {css}")
+
+    # Lint markdown pitfalls (glued lists) and warn — no auto-correction:
+    # the file is rendered as-is, the author fixes the source.
+    if lint:
+        from oto.tools.markdown_lint import warn_markdown
+
+        warn_markdown(input_md.read_text(encoding="utf-8"), source=input_md.name)
 
     cmd = [
         "pandoc",

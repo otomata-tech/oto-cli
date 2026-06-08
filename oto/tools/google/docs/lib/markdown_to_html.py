@@ -16,6 +16,9 @@ from pathlib import Path
 
 import markdown as _md
 
+# Shared markdown pitfall detection (dependency-free): warn only, no auto-fix.
+from oto.tools.markdown_lint import warn_markdown
+
 
 STYLE_FILENAME = 'google-docs-style.css'
 
@@ -28,8 +31,6 @@ _EXTENSIONS = [
     'footnotes',
     'toc',
 ]
-
-_LIST_LINE = re.compile(r'^\s*([-*+]|\d+[.)])\s+')
 
 _YAML_FRONTMATTER = re.compile(r'\A---[ \t]*\n.*?\n---[ \t]*(?:\n[ \t]*)*', re.DOTALL)
 
@@ -65,7 +66,9 @@ def markdown_to_html(text: str, title: str = '', css: str = None) -> str:
     Pass `css=None` to auto-resolve via the .otomata/ convention; pass a CSS
     string to override; pass `''` to skip the `<style>` block entirely.
     """
-    body = _md.markdown(_normalize_lists(_strip_frontmatter(text)), extensions=_EXTENSIONS, output_format='html')
+    stripped = _strip_frontmatter(text)
+    warn_markdown(stripped, source=title or 'document')
+    body = _md.markdown(stripped, extensions=_EXTENSIONS, output_format='html')
     title_tag = f'<title>{_escape(title)}</title>' if title else ''
     if css is None:
         css = find_docs_style()
@@ -87,24 +90,6 @@ def _strip_frontmatter(text: str) -> str:
     renders it as a thematic break + paragraph if left in.
     """
     return _YAML_FRONTMATTER.sub('', text, count=1)
-
-
-def _normalize_lists(text: str) -> str:
-    """Insert a blank line before a list block when missing.
-
-    Python-Markdown follows CommonMark and won't recognise a list that directly
-    follows a paragraph line. GFM / most authors expect it to work — so we
-    insert the blank line ourselves.
-    """
-    lines = text.split('\n')
-    out: list[str] = []
-    for line in lines:
-        if _LIST_LINE.match(line) and out:
-            prev = out[-1]
-            if prev.strip() and not _LIST_LINE.match(prev):
-                out.append('')
-        out.append(line)
-    return '\n'.join(out)
 
 
 def _escape(s: str) -> str:

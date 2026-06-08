@@ -20,14 +20,15 @@ def _markdown_to_html_fragment(text: str) -> str:
     """Render markdown to an HTML fragment suitable for Gmail's text/html part.
 
     No <html>/<body> wrapping — Gmail accepts the fragment directly inside a
-    multipart/alternative message. Reuses the list-normalization helper from
-    the docs renderer so authors can write GFM-style lists right after a
-    paragraph, plus tables, fenced code, inline attributes.
+    multipart/alternative message. Warns (no auto-fix) on markdown pitfalls
+    such as a list glued to the preceding paragraph; supports tables, fenced
+    code, inline attributes.
     """
     import markdown as _md
-    from oto.tools.google.docs.lib.markdown_to_html import _normalize_lists
+    from oto.tools.markdown_lint import warn_markdown
+    warn_markdown(text, source='corps du mail')
     return _md.markdown(
-        _normalize_lists(text),
+        text,
         extensions=['tables', 'fenced_code', 'sane_lists', 'attr_list'],
         output_format='html',
     )
