@@ -154,6 +154,13 @@ def get_secret(name: str, default: Optional[str] = None) -> Optional[str]:
     if env_val:
         return env_val
 
+    # Server hardening (oto-mcp#12) : OTO_CONFIG_DISABLE_SOPS=1 ⇒ le process ne
+    # résout QUE son environnement — ni SOPS, ni ~/.otomata/secrets.env. Les
+    # serveurs (oto-mcp) tirent leurs credentials de leur propre store (DB,
+    # injection) ; une lecture filesystem silencieuse ici contournerait ça.
+    if os.environ.get("OTO_CONFIG_DISABLE_SOPS") == "1":
+        return default
+
     # 2. Configured provider. `store_missing` marks the case where the provider
     #    is configured but has no backing store, so we can fall back to the
     #    local file provider instead of failing.
@@ -226,6 +233,12 @@ def require_secret(name: str) -> str:
     """
     value = get_secret(name)
     if value is None:
+        if os.environ.get("OTO_CONFIG_DISABLE_SOPS") == "1":
+            raise ValueError(
+                f"Required secret '{name}' not found — filesystem secret stores are "
+                f"disabled (OTO_CONFIG_DISABLE_SOPS=1, server mode). Provide it via "
+                f"the process environment or the service's credential store (DB)."
+            )
         provider = get_provider()
         raise ValueError(
             f"Required secret '{name}' not found. Set it via:\n"
