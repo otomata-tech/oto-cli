@@ -221,13 +221,15 @@ class GmailClient:
         original = self.service.users().messages().get(
             userId='me', id=message_id, format='full',
         ).execute()
-        headers = {h['name']: h['value'] for h in original['payload']['headers']}
+        # Lookup case-insensitive : la casse des headers n'est pas normalisée
+        # ("Message-ID" vs "Message-Id" selon l'expéditeur).
+        headers = {h['name'].lower(): h['value'] for h in original['payload']['headers']}
         thread_id = original['threadId']
 
         # Determine recipient: reply to sender (unless we sent it, then reply to To)
-        from_addr = headers.get('From', '')
-        to_addr = headers.get('To', '')
-        reply_to_header = headers.get('Reply-To', '')
+        from_addr = headers.get('from', '')
+        to_addr = headers.get('to', '')
+        reply_to_header = headers.get('reply-to', '')
         profile = self.service.users().getProfile(userId='me').execute()
         my_email = profile['emailAddress']
 
@@ -241,12 +243,12 @@ class GmailClient:
         if not reply_to:
             raise GmailClientError(f"Cannot determine reply recipient (from={from_addr!r}, to={to_addr!r})")
 
-        subject = headers.get('Subject', '')
+        subject = headers.get('subject', '')
         if not subject.lower().startswith('re:'):
             subject = f"Re: {subject}"
 
         message = self._build_message(reply_to, subject, body, html, cc, None, attachments, from_name=from_name)
-        orig_msg_id = headers.get('Message-ID', '')
+        orig_msg_id = headers.get('message-id', '')
         if orig_msg_id:
             message['In-Reply-To'] = orig_msg_id
             message['References'] = orig_msg_id
@@ -281,7 +283,8 @@ class GmailClient:
         draft = self.service.users().drafts().create(
             userId='me', body={'message': msg_body},
         ).execute()
-        return {'id': draft['id'], 'message_id': draft['message']['id']}
+        msg = draft['message']
+        return {'id': draft['id'], 'message_id': msg['id'], 'threadId': msg.get('threadId', '')}
 
     def list_drafts(self, max_results: int = 20) -> list[dict]:
         """List drafts with metadata (id, message_id, to, subject, snippet)."""
@@ -317,17 +320,25 @@ class GmailClient:
         html: Optional[str] = None,
         cc: Optional[str] = None,
         attachments: Optional[list[str]] = None,
+        markdown: bool = True,
     ) -> dict:
-        """Create a draft reply to a message. Preserves thread, subject, and headers."""
+        """Create a draft reply to a message. Preserves thread, subject, and headers.
+
+        If `html` is not provided and `markdown=True` (default), the body is
+        rendered from markdown to an HTML fragment — same contract as `reply`.
+        """
+        if html is None and markdown:
+            html = _markdown_to_html_fragment(body)
         original = self.service.users().messages().get(
             userId='me', id=message_id, format='full',
         ).execute()
-        headers = {h['name']: h['value'] for h in original['payload']['headers']}
+        # Lookup case-insensitive (cf. reply) : "Message-ID" vs "Message-Id".
+        headers = {h['name'].lower(): h['value'] for h in original['payload']['headers']}
         thread_id = original['threadId']
 
-        from_addr = headers.get('From', '')
-        to_addr = headers.get('To', '')
-        reply_to_header = headers.get('Reply-To', '')
+        from_addr = headers.get('from', '')
+        to_addr = headers.get('to', '')
+        reply_to_header = headers.get('reply-to', '')
         profile = self.service.users().getProfile(userId='me').execute()
         my_email = profile['emailAddress']
 
@@ -341,11 +352,11 @@ class GmailClient:
         if not reply_to:
             raise GmailClientError(f"Cannot determine reply recipient (from={from_addr!r}, to={to_addr!r})")
 
-        subject = headers.get('Subject', '')
+        subject = headers.get('subject', '')
         if not subject.lower().startswith('re:'):
             subject = f"Re: {subject}"
 
-        orig_msg_id = headers.get('Message-ID', '')
+        orig_msg_id = headers.get('message-id', '')
         return self.create_draft(
             to=reply_to, subject=subject, body=body, html=html,
             cc=cc, attachments=attachments,
