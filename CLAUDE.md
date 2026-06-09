@@ -133,6 +133,11 @@ Provider-based resolution (`oto config provider secrets <sops|file|scaleway>`) :
    - **scaleway** — Secret Manager
 3. Default value
 
+**Mode serveur** : `OTO_CONFIG_DISABLE_SOPS=1` → `get_secret` résout l'env du
+process UNIQUEMENT (ni SOPS ni `secrets.env`), `require_secret` échoue fort.
+Posé par l'unit oto-mcp (les credentials serveur vivent dans son coffre DB et
+sont injectés dans les clients — jamais d'auto-résolution, cf. oto-mcp#12).
+
 ```bash
 oto config                        # show providers + secrets status
 oto config provider secrets sops  # switch to SOPS (default)
