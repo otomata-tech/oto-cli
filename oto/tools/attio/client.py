@@ -4,6 +4,7 @@ Attio CRM API Client.
 Requires: requests
 """
 
+import re
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List
 
@@ -56,14 +57,14 @@ class AttioResource:
         self,
         limit: int = 50,
         offset: int = 0,
-        sort: str = None,
+        sort: List[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
-        """List records."""
-        params = {"limit": limit, "offset": offset}
+        """List records. Attio v2 n'a pas de GET records : on passe par records/query."""
+        body: Dict[str, Any] = {"limit": limit, "offset": offset}
         if sort:
-            params["sort"] = sort
+            body["sorts"] = sort
 
-        return self.client._request("GET", f"objects/{self.object_type}/records", params=params)
+        return self.client._request("POST", f"objects/{self.object_type}/records/query", json=body)
 
     def get(self, record_id: str) -> Dict[str, Any]:
         """Get a specific record."""
@@ -86,15 +87,20 @@ class AttioResource:
     def search(
         self,
         query: str = None,
-        filters: List[Dict] = None,
+        filters: Dict[str, Any] = None,
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
-        """Search records."""
-        data = {"limit": limit}
+        """Search records.
+
+        `records/query` ne supporte pas de recherche full-text : un `query`
+        est traduit en filtre `{"name": {"$contains": ...}}`. Un `filters`
+        explicite (format Attio `filter`) est prioritaire.
+        """
+        data: Dict[str, Any] = {"limit": limit}
         if query:
-            data["query"] = query
+            data["filter"] = {"name": {"$contains": query}}
         if filters:
-            data["filters"] = filters
+            data["filter"] = filters
 
         return self.client._request("POST", f"objects/{self.object_type}/records/query", json=data)
 
@@ -287,15 +293,17 @@ class AttioLists:
             workspace_member_access: per-member overrides (list of dicts with
                 `workspace_member_id` + `level`).
         """
+        # api_slug et workspace_member_access sont REQUIS par POST /v2/lists
+        # (400 sinon) — slug dérivé du nom, accès membre vide par défaut.
+        if not api_slug:
+            api_slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
         data: Dict[str, Any] = {
             "name": name,
+            "api_slug": api_slug,
             "parent_object": parent_object,
             "workspace_access": workspace_access,
+            "workspace_member_access": workspace_member_access or [],
         }
-        if api_slug:
-            data["api_slug"] = api_slug
-        if workspace_member_access is not None:
-            data["workspace_member_access"] = workspace_member_access
         return self.client._request("POST", "lists", json={"data": data})
 
     def update(self, list_id_or_slug: str, **attributes) -> Dict[str, Any]:
@@ -340,13 +348,15 @@ class AttioEntries:
         parent_object: str,
         entry_values: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
-        """Add a record to a list as a new entry."""
+        """Add a record to a list as a new entry.
+
+        `entry_values` est requis par l'API (400 sinon) — objet vide accepté.
+        """
         data: Dict[str, Any] = {
             "parent_record_id": parent_record_id,
             "parent_object": parent_object,
+            "entry_values": entry_values if entry_values is not None else {},
         }
-        if entry_values is not None:
-            data["entry_values"] = entry_values
         return self.client._request("POST", f"lists/{list_id_or_slug}/entries", json={"data": data})
 
     def update(
@@ -594,7 +604,12 @@ class AttioClient:
         if response.status_code == 429:
             raise Exception("Rate limit exceeded")
 
-        response.raise_for_status()
+        if not response.ok:
+            # Le corps JSON d'Attio contient la vraie raison (validation,
+            # scope manquant…) — le perdre rend les 400/404 indéchiffrables.
+            raise Exception(
+                f"Attio API {response.status_code} on {method} /{endpoint}: {response.text[:2000]}"
+            )
 
         if response.content:
             return response.json()
