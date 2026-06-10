@@ -13,10 +13,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to tuls.me
+      - name: Deploy to oto-platform box
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 51.15.225.121
+          host: 151.115.148.128
           username: root
           key: ${{ secrets.SSH_DEPLOY_KEY }}
           # La clé SSH est RESTREINTE côté serveur : authorized_keys force
