@@ -1,31 +1,30 @@
-# Oto
+# oto-cli
 
-CLI toolkit for AI agents — covers the long tail of SaaS APIs that don't have a CLI.
+**Façade CLI** d'Oto — commandes Typer `oto <cmd>` au-dessus de la lib **oto-core**.
 
-Repo: `otomata-tech/oto-cli`. Package: `oto-cli` on PyPI (v1.1.0). Command: `oto`.
+Repo: `otomata-tech/oto-cli` (public). Command: `oto`. Dépend d'**oto-core** (les clients connecteurs `oto.tools` + `oto.config`, namespace `oto` — split 2026-06-11, otomata#13).
+
+⚠️ **Positionnement (2026-06) : la CLI n'est plus le produit principal.** Le produit central est **oto-mcp** (serveur MCP déployable SaaS/on-premise). La CLI est **basse priorité**, surtout utile comme **fallback local pour LinkedIn browser** (qui ne marche qu'en local). Tout est open source.
 
 ## Philosophy
 
-- **CLI-first**: everything goes through `oto <command>`, no MCP, no server
-- **For AI agents**: JSON on stdout, errors on stderr, composable with pipes
-- **Modular**: each connector is a separate file, auto-discovered at startup
-- **No over-engineering**: no plugin registry, no ABC, no MCP
+- **Façade mince** : les clients vivent dans **oto-core** ; oto-cli n'a que `cli.py` (discovery) + `commands/` (1 fichier = 1 sous-commande Typer).
+- **For AI agents** : JSON on stdout, errors on stderr, composable with pipes.
+- **Local-first** : exécution locale, secrets résolus localement (env → SOPS). Pour le serveur/multi-user/chiffré, c'est oto-mcp.
 
 ## Stack
 
-- Python 3.10+, Typer (CLI), Hatchling (build)
-- Google APIs (auth, drive, docs, sheets, slides, gmail, keep)
-- o-browser (browser automation, Patchright) — optional
-- Requests (HTTP), python-dotenv (secrets)
+- Python 3.10+, Typer (CLI), setuptools (namespace package `oto`, ex-hatchling).
+- **Dépend d'oto-core** (clients `oto.tools` + `oto.config`/secrets) + typer.
+- Extras re-exportés d'oto-core : `google`, `browser`, `vivatech`, `anthropic`, `stock`, `all`.
 
 ## Architecture
 
 ```
 oto/
 ├── oto/
-│   ├── cli.py                  # Dynamic command discovery + main()
-│   ├── config.py               # Secrets 3-tier (.otomata/secrets.env)
-│   ├── commands/               # 1 file = 1 sub-command (auto-discovered)
+│   ├── cli.py                  # Dynamic command discovery + main() (+ entry-point oto.commands)
+│   ├── commands/               # 1 file = 1 sub-command Typer (auto-discovered) ; config.py = oto.config dans oto-core
 │   │   ├── google.py           # drive, docs, sheets, slides, gmail, calendar, auth
 │   │   ├── notion.py           # search, page, database
 │   │   ├── browser.py          # linkedin, crunchbase, pappers, indeed, g2, google, sncf, vivatech
@@ -53,43 +52,28 @@ oto/
 │   │   ├── data.py             # Datastore (per-user Google Sheets via mcp.oto.ninja, OTO_API_KEY)
 │   │   ├── ninja.py            # façade mcp.oto.ninja: secrets per-user (LinkedIn/Crunchbase/API keys), OTO_API_KEY
 │   │   └── config.py           # config & secrets management
-│   └── tools/                  # API clients
-│       ├── google/             # gmail, drive, docs, sheets, slides, calendar, keep
-│       ├── notion/             # pages, databases, search
-│       ├── browser/            # linkedin, crunchbase, pappers, indeed, g2, google, sncf (vivatech = plugin o-browser-vivatech)
-│       ├── reddit/              # Reddit JSON API (no auth)
-│       ├── whatsapp/           # Node.js bridge (whatsapp-web.js)
-│       ├── sirene/             # INSEE SIRENE API
-│       ├── culture/            # OpendatasoftClient générique + SpectacleClient (LES)
-│       ├── serper/             # Google search (web, news)
-│       ├── anthropic/          # Admin API (usage, costs)
-│       ├── pennylane/          # Accounting
-│       ├── gocardless/         # GoCardless API Pro (read-only)
-│       ├── attio/              # Attio CRM
-│       ├── datastore/          # HTTP client → mcp.oto.ninja /api/datastore/*
-│       ├── ninja/              # HTTP client → mcp.oto.ninja /api/settings/* (secrets per-user)
-│       ├── kaspr/, hunter/, lemlist/  # Enrichment & outreach
-│       ├── zohodesk/           # Zoho Desk (tickets/support)
-│       ├── gemini/, openai/    # Image generation (Gemini 3 Pro, gpt-image-2)
-│       ├── pdf/                # pandoc+weasyprint wrapper, bundled CSS template (sober editorial)
-│       └── folk/, zoho/, slack/, resend/  # CRM & messaging
-└── pyproject.toml              # entry point: oto = "oto.cli:main"
+│   └── (PLUS de tools/ ni config.py ici — split 2026-06-11) :
+│        les clients API + la résolution de secrets vivent dans **oto-core**
+│        (namespace `oto.tools.*` + `oto.config`). Les commands/ les importent.
+└── pyproject.toml              # entry point oto = "oto.cli:main" ; dépend d'oto-core
 ```
+
+Chaque `commands/*.py` importe son client depuis `oto.tools.<svc>` (fourni par oto-core, namespace partagé).
 
 Pour les agents Claude Code, le guidage vit dans le **plugin `oto`** (`otomata-tech/oto-plugin`) : un skill universel + le connecteur MCP. La CLI elle-même est auto-documentée via `--help` ; elle ne ship plus de SKILL.md.
 
 ## Adding a new connector
 
-A **core** connector = 2 files (ce repo, public) :
+A **core** connector = 2 fichiers, dans **deux repos** depuis le split (otomata#13) :
 
-1. **`commands/myservice.py`** — Typer app, exports `app`
-2. **`tools/myservice/`** — API client(s)
+1. **client** — `oto/tools/myservice/` dans **oto-core** (la lib, public).
+2. **command** — `oto/commands/myservice.py` dans **oto-cli** (façade Typer, importe `oto.tools.myservice`).
 
-⚠️ Ce repo est **public + PyPI public**. Un connecteur **custom/client** (auth
-reverse-engineerée, infra d'un client, endpoint confidentiel) ne va **jamais**
-ici : package séparé (privé) qui se branche via l'entry-point `oto.commands`
-(découvert par `cli.py`, symétrique à `o_browser.sites`). Ex. `oto-mm`
-(Movinmotion). Cf. `docs/create-connector.md` (section core vs custom) + issue #9.
+(Côté serveur, le wrapper `tools/myservice.py` vit dans **oto-mcp** et importe aussi le client d'oto-core.)
+
+⚠️ Connecteur **custom/client-sensible** (auth reverse-engineerée, infra client,
+endpoint confidentiel) → **jamais dans ces repos publics** : package privé + bridge
+(connecteur remote, ADR 0003). Ex. movinmotion-backoffice-bridge.
 
 See `docs/create-connector.md` for details.
 
@@ -170,7 +154,7 @@ La CLI ne ship plus de skills. Le guidage agent vit dans le **plugin `oto`** (`o
 
 ## Deploy
 
-Push main déclenche `.github/workflows/deploy.yml` qui SSH tuls.me, `git reset --hard origin/main` dans `/opt/oto-cli`, puis `systemctl restart oto-mcp` (oto-cli est installé editable dans le venv d'oto-mcp ; sans restart les modules déjà importés ne pickent pas les nouveaux). Pas de release PyPI requise pour propager un nouveau connecteur.
+Push main déclenche `.github/workflows/deploy.yml` qui SSH la **box dédiée `151.115.148.128`** (plus tuls.me), `git reset --hard origin/main` + **`pip install -e .`** (réinstall façade) + `systemctl restart oto-mcp` dans `/opt/deploy/oto-cli.sh`. NB : oto-mcp importe les clients depuis **oto-core**, pas oto-cli — un changement de *client* se propage via oto-core ; oto-cli ne propage que les *commandes* CLI.
 
 ## Release PyPI (rare)
 
