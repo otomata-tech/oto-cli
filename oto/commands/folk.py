@@ -206,6 +206,16 @@ def deals(
     _out({"count": len(items), "group": group, "deals": items})
 
 
+@app.command("custom-fields")
+def custom_fields(
+    group: str = typer.Argument(..., help="Group ID (grp_...)"),
+    entity_type: str = typer.Option("person", "--type", "-t", help="Entity type: person, company, or custom object name (e.g. Missions)"),
+):
+    """List the custom field definitions of a group for a given entity type."""
+    items = _client().get_group_custom_fields(group, entity_type)
+    _out({"count": len(items), "group": group, "entity_type": entity_type, "fields": items})
+
+
 # --- Notes ---
 
 @app.command("notes")
