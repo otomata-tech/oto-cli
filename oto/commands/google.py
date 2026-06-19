@@ -11,16 +11,18 @@ from oto.tools.google.drive.commands import app as drive_app
 from oto.tools.google.docs.commands import app as docs_app
 from oto.tools.google.calendar.commands import app as calendar_app
 from oto.tools.google.gmail.commands import app as gmail_app
+from oto.tools.google.chat.commands import app as chat_app
 from oto.tools.google.sheets.commands import app as sheets_app
 from oto.tools.google.slides.commands import app as slides_app
 from oto.tools.google.tasks.commands import app as tasks_app
 
-app = typer.Typer(help="Google Workspace tools (Drive, Docs, Sheets, Slides, Gmail, Calendar, Tasks)")
+app = typer.Typer(help="Google Workspace tools (Drive, Docs, Sheets, Slides, Gmail, Chat, Calendar, Tasks)")
 
 app.add_typer(drive_app, name="drive")
 app.add_typer(docs_app, name="docs")
 app.add_typer(calendar_app, name="calendar")
 app.add_typer(gmail_app, name="gmail")
+app.add_typer(chat_app, name="chat")
 app.add_typer(sheets_app, name="sheets")
 app.add_typer(slides_app, name="slides")
 app.add_typer(tasks_app, name="tasks")
@@ -34,10 +36,11 @@ def auth(
     """Set up or list Google OAuth accounts."""
     from oto.tools.google.credentials import list_accounts as _list_accounts, setup_account, DEFAULT_SCOPES as DRIVE_SCOPES
     from oto.tools.google.gmail.lib.gmail_client import SCOPES as GMAIL_SCOPES
+    from oto.tools.google.chat.lib.chat_client import SCOPES as CHAT_SCOPES
     from oto.tools.google.calendar.lib.calendar_client import SCOPES as CALENDAR_SCOPES
     from oto.tools.google.tasks.lib.tasks_client import SCOPES as TASKS_SCOPES
 
-    ALL_SCOPES = list(set(GMAIL_SCOPES + CALENDAR_SCOPES + DRIVE_SCOPES + TASKS_SCOPES))
+    ALL_SCOPES = list(set(GMAIL_SCOPES + CHAT_SCOPES + CALENDAR_SCOPES + DRIVE_SCOPES + TASKS_SCOPES))
 
     if list_accounts:
         accounts = _list_accounts()
