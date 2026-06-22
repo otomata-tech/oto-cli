@@ -1,0 +1,24 @@
+name: CI
+
+# oto-cli n'a pas de tests propres → smoke d'import/CLI : l'install résout (dont
+# oto-core) et la commande `oto` se construit (Typer) sans casser. Catch les
+# imports morts / entry-point cassé. Cf. otomata-private#39 (#5).
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: pip install .
+      - name: Smoke (la CLI se construit)
+        run: oto --help
