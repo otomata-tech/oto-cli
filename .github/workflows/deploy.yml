@@ -11,17 +11,11 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, oto-platform]
     steps:
-      - name: Deploy to oto-platform box
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
-        with:
-          host: 151.115.148.128
-          username: root
-          key: ${{ secrets.SSH_DEPLOY_KEY }}
-          # La clé SSH est RESTREINTE côté serveur : authorized_keys force
-          # command="/opt/deploy/oto-cli.sh" (clé persistée dans instance_keys
-          # immutable, cf. /opt/add-deploy-key.sh). sshd exécute TOUJOURS ce
-          # script et ignore le `script:` ci-dessous — gardé pour lisibilité,
-          # la source de vérité est /opt/deploy/oto-cli.sh sur le serveur.
-          script: /opt/deploy/oto-cli.sh
+      - name: Deploy (build serveur via script root-restreint)
+        # Runner self-hosted sur la box dédiée (user non-root `gha-runner`, sudo
+        # NOPASSWD limité à /opt/deploy/oto-cli.sh) : plus de SSH entrant (port 22
+        # filtré par CrowdSec, qui droppe les IP des runners GitHub hosted). Source
+        # de vérité du déploiement : /opt/deploy/oto-cli.sh sur le serveur.
+        run: sudo /opt/deploy/oto-cli.sh
