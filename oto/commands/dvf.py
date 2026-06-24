@@ -1,4 +1,4 @@
-"""DVF — transactions immobilières (open data Etalab geo-dvf)."""
+"""DVF — transactions immobilières (DVF+ open data Cerema, depuis 2014)."""
 import json
 
 import typer
