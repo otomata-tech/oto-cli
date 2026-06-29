@@ -73,7 +73,7 @@ A **core** connector = 2 fichiers, dans **deux repos** depuis le split (otomata#
 
 ⚠️ Connecteur **custom/client-sensible** (auth reverse-engineerée, infra client,
 endpoint confidentiel) → **jamais dans ces repos publics** : package privé + bridge
-(connecteur remote, ADR 0003). Ex. movinmotion-backoffice-bridge.
+(connecteur remote, ADR 0003). Ex. un bridge back-office client (repo privé).
 
 See `docs/create-connector.md` for details.
 

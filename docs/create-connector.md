@@ -44,7 +44,7 @@ app = typer.Typer(help="My client — short description")
 ```
 
 Install: `pipx inject oto-cli oto-myclient@git+ssh://...` (or `pip install` in a
-venv). Reference: the `oto-mm` package (Movinmotion, private) and issue
+venv). Reference: a private bridge package and issue
 otomata-tech/oto-cli#9.
 
 ## 1. Command file
