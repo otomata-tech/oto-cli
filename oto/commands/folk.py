@@ -234,6 +234,30 @@ def add_note(
     _out(_client().create_note(entity_id, content))
 
 
+@app.command("update-note")
+def update_note(
+    note_id: str = typer.Argument(..., help="Note ID (nte_...)"),
+    content: Optional[str] = typer.Option(None, "--content", "-c", help="New note content (markdown)"),
+    visibility: Optional[str] = typer.Option(None, "--visibility", "-v", help="public or private"),
+):
+    """Edit an existing note (only the given fields change)."""
+    fields = {}
+    if content is not None:
+        fields["content"] = content
+    if visibility is not None:
+        fields["visibility"] = visibility
+    if not fields:
+        raise typer.BadParameter("pass --content and/or --visibility")
+    _out(_client().update_note(note_id, **fields))
+
+
+@app.command("delete-note")
+def delete_note(note_id: str = typer.Argument(..., help="Note ID (nte_...)")):
+    """Delete a note."""
+    _client().delete_note(note_id)
+    print(f"Deleted {note_id}")
+
+
 # --- Interactions ---
 
 @app.command("add-interaction")
