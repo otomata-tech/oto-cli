@@ -261,3 +261,83 @@ def stock_search(
         limit=limit, offset=offset,
     )
     print(json.dumps(res, indent=2, ensure_ascii=False))
+
+
+# --- accords d'entreprise (index ACCO) ---------------------------------------
+# Repli documenté quand le connecteur MCP est indisponible : l'index vit côté
+# service FOD (réseau privé), on passe donc par l'API d'oto-mcp (token OTO_API_KEY).
+accords_app = typer.Typer(help="Accords d'entreprise (index ACCO), via l'API oto")
+app.add_typer(accords_app, name="accords")
+
+
+@accords_app.command("search")
+def accords_search(
+    query: Optional[str] = typer.Option(None, "--query", "-q", help="Mots du titre"),
+    idcc: Optional[str] = typer.Option(None, "--idcc", help="Convention collective (0573 ou 573)"),
+    themes: Optional[str] = typer.Option(None, "--themes", help="Codes thème séparés par des virgules (ex. 111,112)"),
+    nature: Optional[str] = typer.Option(None, "--nature", help="ACCORD | AVENANT | …"),
+    siren: Optional[str] = typer.Option(None, "--siren"),
+    departement: Optional[str] = typer.Option(None, "--dept", help="Préfixe code postal (2 chiffres)"),
+    date_from: Optional[str] = typer.Option(None, "--from", help="AAAA-MM-JJ"),
+    date_to: Optional[str] = typer.Option(None, "--to", help="AAAA-MM-JJ"),
+    latest_per_siret: bool = typer.Option(False, "--latest", help="Un seul accord (le plus récent) par établissement"),
+    limit: int = typer.Option(20, "--limit", "-n"),
+    offset: int = typer.Option(0, "--offset"),
+):
+    """Chercher des accords d'entreprise (mêmes filtres que fr_accords_search)."""
+    import json
+    from oto.tools.accords import AccordsClient
+
+    res = AccordsClient().search(
+        query=query, idcc=idcc,
+        themes=[t.strip() for t in themes.split(",")] if themes else None,
+        nature=nature, siren=siren, departement=departement,
+        date_from=date_from, date_to=date_to, latest_per_siret=latest_per_siret,
+        limit=limit, offset=offset,
+    )
+    print(json.dumps(res, indent=2, ensure_ascii=False))
+
+
+@accords_app.command("get")
+def accords_get(id_or_numero: str = typer.Argument(..., help="id DILA (ACCOTEXT000…) ou numéro de dépôt (T…)")):
+    """Un accord et ses métadonnées."""
+    import json
+    from oto.tools.accords import AccordsClient
+
+    print(json.dumps(AccordsClient().get(id_or_numero), indent=2, ensure_ascii=False))
+
+
+@accords_app.command("themes")
+def accords_themes():
+    """Nomenclature des thèmes (code + libellé), pour composer --themes."""
+    import json
+    from oto.tools.accords import AccordsClient
+
+    print(json.dumps(AccordsClient().themes(), indent=2, ensure_ascii=False))
+
+
+@accords_app.command("sirens")
+def accords_sirens(
+    idccs: str = typer.Argument(..., help="Codes IDCC séparés par des virgules (ex. 1596,1597,2609)"),
+    themes: Optional[str] = typer.Option(None, "--themes", help="Codes thème séparés par des virgules"),
+    departement: Optional[str] = typer.Option(None, "--dept"),
+    limit_per_idcc: int = typer.Option(1000, "--limit-per-idcc"),
+):
+    """SIREN distincts couverts par PLUSIEURS conventions (dédup incluse).
+
+    L'API n'accepte qu'un IDCC par requête alors qu'une entreprise en porte souvent
+    trois ou quatre — cette commande boucle et déduplique à ta place.
+    """
+    import json
+    from oto.tools.accords import AccordsClient
+
+    extra = {}
+    if themes:
+        extra["themes"] = [t.strip() for t in themes.split(",")]
+    if departement:
+        extra["departement"] = departement
+    sirens = AccordsClient().sirens_by_idcc(
+        [c.strip() for c in idccs.split(",") if c.strip()],
+        limit_per_idcc=limit_per_idcc, **extra,
+    )
+    print(json.dumps({"count": len(sirens), "sirens": sirens}, indent=2))
