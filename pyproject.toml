@@ -12,12 +12,21 @@ license = "MIT"
 authors = [{ name = "Alexis Laporte" }]
 keywords = ["cli", "ai-agents", "automation", "api", "llm"]
 dependencies = [
-    "oto-core",
+    # `[stock]` (duckdb/pyarrow/pandas) EN BASE, pas en extra : la CLI est le
+    # FALLBACK quand le MCP est indisponible, et `oto fr get` / `oto fr bilans`
+    # lisent des parquets via duckdb (import lazy dans `france_opendata.inpi`).
+    # En extra, l'échec survenait au pire moment — MCP à terre, CLI qui lève un
+    # `ModuleNotFoundError: duckdb` brut, et un contournement manuel à trouver
+    # (`pipx inject oto-cli duckdb`). Un fallback qui exige une install au moment
+    # de la panne n'est pas un fallback (signal d'usage #294).
+    "oto-core[stock]",
     "typer>=0.9.0",
 ]
 
 [project.optional-dependencies]
 # Les extras client-side vivent dans oto-core ; re-exportés pour `oto-cli[all]`.
+# `stock` est conservé (no-op depuis qu'il est en base) : `oto-cli[stock]` reste
+# une install valide pour qui l'a scripté.
 google = ["oto-core[google]"]
 browser = ["oto-core[browser]"]
 vivatech = ["oto-core[vivatech]"]
