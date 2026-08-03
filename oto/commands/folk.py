@@ -37,6 +37,11 @@ def people(
     filters = {}
     if search:
         filters["fullName"] = search
+    if group:
+        # L'option existait mais n'était jamais consommée : `--group` renvoyait TOUT
+        # le carnet en silence, ce qui se lit comme un filtre qui ne trouve rien de
+        # spécial. Le client traduit `groups` en filter[groups][in][id] (signal #260).
+        filters["groups"] = group
     items = c.list_people(**filters)
     result = []
     for p in items:
@@ -115,11 +120,16 @@ def delete_person(person_id: str = typer.Argument(..., help="Person ID (per_...)
 # --- Companies ---
 
 @app.command("companies")
-def companies(search: Optional[str] = typer.Argument(None, help="Search by name")):
+def companies(
+    search: Optional[str] = typer.Argument(None, help="Search by name"),
+    group: Optional[str] = typer.Option(None, "--group", "-g", help="Filter by group ID"),
+):
     """List companies."""
     filters = {}
     if search:
         filters["name"] = search
+    if group:
+        filters["groups"] = group
     items = _client().list_companies(**filters)
     _out({"count": len(items), "companies": items})
 
