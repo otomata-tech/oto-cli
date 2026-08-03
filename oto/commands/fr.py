@@ -246,6 +246,9 @@ def stock_search(
     denomination: Optional[str] = typer.Option(None, "--denomination"),
     enseigne: Optional[str] = typer.Option(None, "--enseigne"),
     sieges_only: bool = typer.Option(False, "--sieges-only"),
+    tranche_effectifs: Optional[str] = typer.Option(
+        None, "--tranche-effectifs", "-t",
+        help="Codes INSEE TEFEN séparés par des virgules (ex. 22,31,32 = 50 salariés et +)"),
     all_states: bool = typer.Option(False, "--all"),
     limit: int = typer.Option(100, "--limit", "-n"),
     offset: int = typer.Option(0, "--offset"),
@@ -258,6 +261,7 @@ def stock_search(
         naf=naf, code_commune=code_commune, code_postal=code_postal,
         departement=departement, denomination=denomination, enseigne=enseigne,
         active_only=not all_states, sieges_only=sieges_only,
+        tranche_effectifs=tranche_effectifs,
         limit=limit, offset=offset,
     )
     print(json.dumps(res, indent=2, ensure_ascii=False))
