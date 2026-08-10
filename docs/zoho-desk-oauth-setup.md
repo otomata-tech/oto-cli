@@ -1,3 +1,16 @@
+---
+title: Zoho Desk — OAuth setup
+type: how-to
+description: >-
+  Procédure pour obtenir les quatre secrets nécessaires à `oto zohodesk` : création d'une org
+  Zoho Desk (plan free, récupération de `ZOHO_DESK_ORG_ID`), enregistrement d'un OAuth Self Client
+  sur `api-console.zoho.com` (`ZOHO_DESK_CLIENT_ID` + `ZOHO_DESK_CLIENT_SECRET`), génération
+  du `ZOHO_DESK_REFRESH_TOKEN` via échange `authorization_code` curl avec les scopes
+  `Desk.tickets.ALL,Desk.contacts.READ,Desk.basic.READ,Desk.settings.READ`, et configuration
+  dans `~/.otomata/secrets.env` avec gestion multi-datacenter (US/EU/IN/AU).
+  Charger pour brancher le connecteur Zoho Desk sur un nouveau compte ou datacenter.
+---
+
 # Zoho Desk — OAuth setup
 
 Steps to obtain the secrets needed by `oto zohodesk`.

@@ -1,3 +1,15 @@
+---
+title: Google Service Account Setup
+type: how-to
+description: >-
+  Procédure complète pour créer un Service Account Google Cloud (GCP), activer les APIs
+  Drive/Docs/Sheets/Slides, générer une clé JSON, partager les ressources Drive avec le
+  compte de service, et configurer le credential dans otomata via variable d'environnement
+  `GOOGLE_SERVICE_ACCOUNT`, `.env.local`, ou `~/.config/otomata/google_service_account`.
+  Inclut un tableau de troubleshooting et un pattern d'isolation par équipe (Shared Drive dédié).
+  Charger quand il faut mettre en place l'accès Google Workspace via service account.
+---
+
 # Google Service Account Setup
 
 This guide explains how to create a Google Service Account from scratch to use with otomata tools.

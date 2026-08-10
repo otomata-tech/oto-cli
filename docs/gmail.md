@@ -1,3 +1,15 @@
+---
+title: Gmail — markdown / HTML body rendering
+type: reference
+description: >-
+  Référence des flags de format du corps de message pour les commandes `oto google gmail send`,
+  `reply` et `draft` : `--markdown` (défaut, rendu HTML multipart), `--html` (HTML brut),
+  `--no-markdown` (texte pur). Documente la structure multipart, les extensions markdown
+  supportées (`tables`, `fenced_code`, `sane_lists`, `attr_list`), les limites (images inline,
+  CSS custom, footnotes), et les fonctions d'implémentation clés dans `oto/commands/google.py`.
+  Charger quand un agent doit choisir le bon flag de format ou diagnostiquer un rendu mail.
+---
+
 # Gmail — markdown / HTML body rendering
 
 `oto google gmail send`, `reply`, and `draft` accept a single `--body` argument

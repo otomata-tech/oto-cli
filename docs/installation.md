@@ -1,3 +1,15 @@
+---
+title: Installation
+type: how-to
+description: >-
+  Procédure d'installation de `oto-cli` via `pipx` avec les extras disponibles (`browser`,
+  `google`, `all`), configuration des secrets dans `~/.otomata/secrets.env` via `oto config`,
+  setup LinkedIn par profil persistant (`oto linkedin login` → profil Chrome `~/.config/browser/linkedin`),
+  et intégration Claude Code via le plugin `otomata-tech/oto-plugin`. Inclut troubleshooting
+  (`command not found`, Chrome manquant, session LinkedIn expirée) et les commandes de mise à jour.
+  Charger pour installer oto sur une machine neuve ou déboguer une installation défaillante.
+---
+
 # Installation
 
 `oto` is a CLI toolkit. Install it once with `pipx`, then every connector is a

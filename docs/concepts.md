@@ -1,3 +1,16 @@
+---
+title: Concepts
+type: explanation
+description: >-
+  Explique pourquoi oto existe (CLI vs MCP : ~80 tokens contre 4-32x, fiabilité 100% vs 72%),
+  comment `cli.py` découvre automatiquement les commandes par scan de `oto/commands/`, et les
+  trois types de connecteurs — API (`requests`), Browser (hérite `BrowserClient`, async) et
+  SDK (Google Workspace via `google-api-python-client`). Documente la résolution de secrets
+  en 3 niveaux (env → `.otomata/secrets.env` projet → user), le contrat de sortie JSON stdout
+  / erreurs stderr, et l'intégration Claude Code via le plugin `oto`.
+  Charger pour comprendre l'architecture générale avant de créer ou débugger un connecteur.
+---
+
 # Concepts
 
 ## Why oto exists

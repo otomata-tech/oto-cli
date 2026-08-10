@@ -1,3 +1,15 @@
+---
+title: Google Docs — markdown import & styling
+type: reference
+description: >-
+  Référence pour `oto google docs create` avec le flag `-m` : rendu markdown → HTML via le Drive
+  API HTML importer (`mimeType=application/vnd.google-apps.document`), convention de style CSS
+  dans `.otomata/google-docs-style.css` (résolution projet → user → fallback natif Drive),
+  sous-ensemble CSS supporté par Drive (font, margin, border ; pas de flex/grid/pseudo-sélecteurs)
+  et extensions markdown activées (`tables`, `fenced_code`, `footnotes`, `toc`).
+  Charger quand un agent crée ou style un Google Doc depuis du markdown.
+---
+
 # Google Docs — markdown import & styling
 
 ## Create a Doc from markdown

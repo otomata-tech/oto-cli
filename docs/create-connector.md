@@ -1,3 +1,17 @@
+---
+title: Create a connector
+type: how-to
+description: >-
+  Guide étape par étape pour ajouter un connecteur oto : décision core vs custom/privé
+  (entry-point `oto.commands` pour les packages privés, jamais dans le repo public pour
+  les endpoints confidentiels), puis création du fichier `oto/commands/myservice.py` (Typer,
+  imports lazy, JSON stdout) et du client `oto/tools/myservice/client.py` (API `requests`,
+  Browser `BrowserClient` async, ou SDK). Référence un package bridge privé
+  comme exemple d'entry-point privé et l'issue otomata-tech/oto-cli#9.
+  Charger dès qu'un agent ou développeur doit créer ou plugger un nouveau connecteur.
+adr: ["0003"]
+---
+
 # Create a connector
 
 A connector is a pair: **command** + **tool client**. Write clear `--help`

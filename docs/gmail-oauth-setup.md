@@ -1,3 +1,16 @@
+---
+title: Gmail OAuth Setup
+type: how-to
+description: >-
+  Procédure pour configurer l'OAuth2 user flow Gmail (Desktop app, GCP consent screen External,
+  mode Testing) : activation de l'API Gmail, création d'un OAuth Client ID, placement du JSON
+  dans `~/.otomata/google-oauth-client.json`, premier lancement `otomata google auth` et gestion
+  multi-compte via `-a <name>`. Inclut le tableau des fichiers générés (`google-oauth-token*.json`),
+  les commandes Gmail disponibles (`gmail-list`, `gmail-send`, `gmail-draft`…) et un tableau
+  de troubleshooting (`access_denied`, `Token expired`, `Multiple accounts`).
+  Charger pour brancher Gmail OAuth sur une machine ou ajouter un compte supplémentaire.
+---
+
 # Gmail OAuth Setup
 
 Gmail nécessite un **OAuth2 user flow** (pas un service account) car il accède aux données personnelles de l'utilisateur.
