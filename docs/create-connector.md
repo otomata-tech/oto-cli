@@ -23,7 +23,7 @@ strings — that's how agents (and the `oto` plugin's universal skill) discover 
 anyone). Decide before writing a line of code:
 
 - **Core connector** — generic / open-data / mainstream SaaS (fr, dvf, culture,
-  serper, reddit, attio…). Lives **in this repo** (`oto/commands/` +
+  serper, reddit, folk…). Lives **in this repo** (`oto/commands/` +
   `oto/tools/`), discovered by the filesystem glob in `cli.py`. PR welcome.
 - **Custom / client-specific connector** — anything that exposes a client's
   internals, a private workflow, a reverse-engineered auth, or a confidential

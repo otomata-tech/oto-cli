@@ -38,7 +38,6 @@ oto/
 │   │   ├── pennylane.py        # accounting
 │   │   ├── gocardless.py       # GoCardless direct-debit (read-only; MCP `gocardless_*` masqué par défaut)
 │   │   ├── anthropic.py        # usage, cost, summary
-│   │   ├── attio.py            # Attio CRM (contacts, companies, deals, tasks)
 │   │   ├── folk.py             # Folk CRM
 │   │   ├── zoho.py             # Zoho CRM
 │   │   ├── zohodesk.py         # Zoho Desk (tickets/support)

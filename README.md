@@ -46,7 +46,6 @@ cd oto-cli && pip install -e ".[all]"
 | `oto pennylane` | Accounting (Pennylane API) | — |
 | `oto anthropic` | API usage & cost tracking | `anthropic` |
 | `oto whatsapp` | Send & read WhatsApp messages | — |
-| `oto attio` | Attio CRM (contacts, companies, deals, tasks) | — |
 | `oto folk` | Folk CRM (contacts, companies, deals) | — |
 | `oto zoho` | Zoho CRM (records, contacts, deals, notes) | — |
 | `oto zohodesk` | Zoho Desk (tickets, threads, contacts, departments) | — |
