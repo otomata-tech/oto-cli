@@ -1,8 +1,12 @@
 name: CI
 
-# oto-cli n'a pas de tests propres → smoke d'import/CLI : l'install résout (dont
-# oto-core) et la commande `oto` se construit (Typer) sans casser. Catch les
-# imports morts / entry-point cassé. Cf. otomata-private#39 (#5).
+# oto-cli reste une façade mince → pas de suite exhaustive, mais deux niveaux
+# depuis oto-cli#11/oto-core#63 : smoke d'import/CLI (l'install résout, dont
+# oto-core, et `oto` se construit sans casser — cf. otomata-private#39/#5), et
+# des tests ciblés sur les commandes qui portent une vraie logique (secrets :
+# imports lazy par sous-commande, jamais exercés par le smoke `--help` seul —
+# c'est comme ça que oto.scaleway_secrets et _get_user_secrets sont restés
+# cassés en silence après le split oto-core).
 on:
   pull_request:
     branches: [main]
@@ -19,6 +23,8 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install
-        run: pip install .
+        run: pip install ".[dev]"
       - name: Smoke (la CLI se construit)
         run: oto --help
+      - name: Tests
+        run: pytest tests/ -v
