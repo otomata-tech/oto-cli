@@ -15,6 +15,14 @@ Commandes :
     oto ninja secrets set <NAME> <VALUE>   → écrit la valeur (cookie ou clé)
     oto ninja secrets delete <NAME>        → efface (par groupe)
 
+⚠️ `get` échoue NOMMÉMENT (exit 1, rien sur stdout) pour tout <provider>_API_KEY
+(serper/hunter/sirene/attio/lemlist) : depuis le durcissement du coffre
+(oto-backend#671), une clé posée n'est plus JAMAIS relisible côté serveur —
+seule une empreinte reste. `list` dit si une clé est posée, `set` la (re)pose.
+Avant ce garde-fou, la commande imprimait `not configured` pour une clé bel et
+bien posée, et `export FOO=$(oto ninja secrets get FOO)` posait FOO **vide**
+sans qu'aucun code de sortie ne le trahisse (oto-cli#11).
+
 Conventions de nommage (mapping name → endpoint) :
     LINKEDIN_COOKIE       → /api/settings/linkedin       (champ `cookie`)
     LINKEDIN_USER_AGENT   → /api/settings/linkedin       (champ `user_agent`)
@@ -133,8 +141,21 @@ def get_secret(
     """Affiche la valeur d'un secret en stdout (pas de newline trailing).
 
     Composable :  export FOO=$(oto ninja secrets get FOO)
+
+    ⚠️ Toujours en échec pour <provider>_API_KEY (voir docstring du module) :
+    le coffre ne relit plus JAMAIS une clé posée (oto-backend#671). Le refus
+    est immédiat et nommé — jamais un `None` silencieux pris pour « pas posé ».
     """
     group, field = _resolve(name)
+    if group.startswith("api_key:"):
+        print(
+            f"{name} : la valeur n'est plus lisible par conception depuis le "
+            f"durcissement du coffre (oto-backend#671) — seule une empreinte "
+            f"est conservée côté serveur. Vérifie avec `oto ninja secrets "
+            f"list`, repose avec `oto ninja secrets set {name} <valeur>`.",
+            file=sys.stderr,
+        )
+        raise typer.Exit(1)
     try:
         value = _fetch_value(_client(), group, field)
     except Exception as e:

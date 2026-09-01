@@ -33,6 +33,7 @@ vivatech = ["oto-core[vivatech]"]
 anthropic = ["oto-core[anthropic]"]
 stock = ["oto-core[stock]"]
 all = ["oto-core[all]"]
+dev = ["pytest>=8.0"]
 
 [project.urls]
 Repository = "https://github.com/otomata-tech/oto-cli"
