@@ -8,6 +8,10 @@ name: CLA
 # n'ont pas acces aux secrets avec pull_request. L'action ne fait aucun checkout
 # du code de la PR — elle ne lit que les metadonnees — donc pas d'execution de
 # code non fiable avec les droits du repo de base.
+#
+# Garde-fou (03/09/2026) : sans le jeton, ce job ECHOUE. Il a passe au vert sans
+# rien verifier du 03/08 au 03/09/2026, secret absent, et personne ne l'a vu —
+# un controle qui affirme au lieu de verifier est pire que pas de controle.
 
 on:
   issue_comment:
@@ -32,10 +36,46 @@ jobs:
     env:
       HAS_TOKEN: ${{ secrets.CLA_SIGNATURES_TOKEN != '' && 'true' || 'false' }}
     steps:
-      - name: Token de signatures absent
+      - name: Jeton de signatures absent — echec volontaire
         if: env.HAS_TOKEN != 'true'
         run: |
-          echo "::warning title=CLA non applique::Le secret d'organisation CLA_SIGNATURES_TOKEN est absent — la signature du CLA n'est pas verifiee sur cette PR. Voir otomata-tech/oto/CONTRIBUTING.md."
+          echo "::error title=CLA NON APPLIQUE — ne pas merger::Le secret d'organisation CLA_SIGNATURES_TOKEN est absent ou expire : la signature du CLA n'a PAS ete verifiee sur cette PR. Ce job echoue expres, pour ne pas laisser croire que le controle a eu lieu.%0A%0AFusionner sans ce controle laisse entrer une contribution sans cession de droits : le projet n'a alors pas le droit de la redistribuer.%0A%0ALe jeton est dans 1Password, coffre oto, item « GitHub PAT cla-signatures ». Le reposer :%0A%0Agh secret set CLA_SIGNATURES_TOKEN --org otomata-tech --visibility selected --repos oto-backend,oto-core,oto-runner,oto-dashboard,oto-studio,france-opendata,oto-cli,o-browser,oto-plugin,otomata-mcp%0A%0APuis relancer ce workflow. Voir otomata-tech/oto-private/docs/licence-et-cla.md."
+          cat >&2 <<'MSG'
+
+          ================================================================
+           CLA NON APPLIQUE — ce job echoue volontairement
+          ================================================================
+
+          Le secret d'organisation CLA_SIGNATURES_TOKEN est absent ou expire.
+          La signature du CLA n'a PAS ete verifiee sur cette pull request.
+
+          Pourquoi un echec et pas un avertissement : du 03/08 au 03/09/2026 ce
+          job passait au vert sans rien verifier, et personne ne l'a vu. Un
+          controle vert qui n'a rien controle vaut moins que pas de controle.
+
+          Ce que ca coute de merger quand meme : une contribution entre sans
+          cession de droits, donc sans le droit pour le projet de la
+          redistribuer. C'est irrattrapable apres coup sans recontacter
+          l'auteur.
+
+          Comment reparer :
+
+            1. Le jeton est dans 1Password — coffre « oto », item
+               « GitHub PAT cla-signatures » (PAT fine-grained).
+               S'il est expire, en emettre un neuf et remplacer l'item.
+
+            2. Le reposer comme secret d'organisation :
+
+               gh secret set CLA_SIGNATURES_TOKEN \
+                 --org otomata-tech \
+                 --visibility selected \
+                 --repos oto-backend,oto-core,oto-runner,oto-dashboard,oto-studio,france-opendata,oto-cli,o-browser,oto-plugin,otomata-mcp
+
+            3. Relancer ce workflow, et ne merger qu'une fois ce job vert.
+
+          ================================================================
+          MSG
+          exit 1
 
       - name: Verifier la signature du CLA
         if: env.HAS_TOKEN == 'true'
