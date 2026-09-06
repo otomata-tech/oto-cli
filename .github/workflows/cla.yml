@@ -39,7 +39,7 @@ jobs:
       - name: Jeton de signatures absent — echec volontaire
         if: env.HAS_TOKEN != 'true'
         run: |
-          echo "::error title=CLA NON APPLIQUE — ne pas merger::Le secret d'organisation CLA_SIGNATURES_TOKEN est absent ou expire : la signature du CLA n'a PAS ete verifiee sur cette PR. Ce job echoue expres, pour ne pas laisser croire que le controle a eu lieu.%0A%0AFusionner sans ce controle laisse entrer une contribution sans cession de droits : le projet n'a alors pas le droit de la redistribuer.%0A%0ALe jeton est dans 1Password, coffre oto, item « GitHub PAT cla-signatures ». Le reposer :%0A%0Agh secret set CLA_SIGNATURES_TOKEN --org otomata-tech --visibility selected --repos oto-backend,oto-core,oto-runner,oto-dashboard,oto-studio,france-opendata,oto-cli,o-browser,oto-plugin,otomata-mcp%0A%0APuis relancer ce workflow. Voir otomata-tech/oto-private/docs/licence-et-cla.md."
+          echo "::error title=CLA NON APPLIQUE — ne pas merger::Le secret d'organisation CLA_SIGNATURES_TOKEN est absent ou expire : la signature du CLA n'a PAS ete verifiee sur cette PR. Ce job echoue expres, pour ne pas laisser croire que le controle a eu lieu.%0A%0AFusionner sans ce controle laisse entrer une contribution sans cession de droits : le projet n'a alors pas le droit de la redistribuer.%0A%0ALe jeton est dans 1Password, coffre oto, item « GitHub PAT cla-signatures ». Le reposer :%0A%0Agh secret set CLA_SIGNATURES_TOKEN --org otomata-tech --visibility selected --repos oto,oto-backend,oto-core,oto-runner,oto-dashboard,oto-studio,france-opendata,oto-cli,o-browser,oto-plugin,otomata-mcp%0A%0APuis relancer ce workflow. Voir otomata-tech/oto-private/docs/licence-et-cla.md."
           cat >&2 <<'MSG'
 
           ================================================================
@@ -69,7 +69,7 @@ jobs:
                gh secret set CLA_SIGNATURES_TOKEN \
                  --org otomata-tech \
                  --visibility selected \
-                 --repos oto-backend,oto-core,oto-runner,oto-dashboard,oto-studio,france-opendata,oto-cli,o-browser,oto-plugin,otomata-mcp
+                 --repos oto,oto-backend,oto-core,oto-runner,oto-dashboard,oto-studio,france-opendata,oto-cli,o-browser,oto-plugin,otomata-mcp
 
             3. Relancer ce workflow, et ne merger qu'une fois ce job vert.
 
