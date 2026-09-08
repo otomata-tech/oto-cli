@@ -1,9 +1,8 @@
 """One-shot — migre /mnt/otomata/time-entries.json vers le namespace `timetrack`
-du datastore (Google Sheets via MCP).
+du datastore (PostgreSQL via MCP).
 
 Prérequis :
 - `OTO_API_KEY` configuré dans SOPS (token issu via `scripts/issue_token.py`).
-- Google Drive connecté côté MCP (`GET /api/google/oauth/status` → connected=true).
 
 L'`id` legacy (`YYYY-MM-DD-NNN`) est ignoré — `date` + `_created_at` suffisent
 à retrouver l'origine. Le `_id` UUID du datastore est généré côté serveur.
@@ -32,7 +31,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true",
                         help="Affiche ce qui serait fait sans rien écrire")
     parser.add_argument("--rate-limit", type=float, default=0.5,
-                        help="Sleep (s) entre chaque append (Sheets quota: 100/min)")
+                        help="Sleep (s) entre chaque append")
     parser.add_argument("--source", type=Path, default=SOURCE)
     args = parser.parse_args()
 
@@ -84,7 +83,7 @@ def main():
     print(f"\nterminé: {ok}/{len(entries)} OK, {len(failed)} fail")
     if failed:
         return 1
-    print(f"\n→ ouvre dans Drive: {ns['url']}")
+    print(f"\n→ ouvre le tableau: {ns['url']}")
     return 0
 
 

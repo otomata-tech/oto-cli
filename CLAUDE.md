@@ -48,7 +48,7 @@ oto/
 │   │   ├── gemini.py           # Gemini image generation (gemini-3-pro-image)
 │   │   ├── openai.py           # OpenAI image generation (gpt-image-2)
 │   │   ├── pdf.py              # markdown → PDF via pandoc + weasyprint (bundled template)
-│   │   ├── data.py             # Datastore (per-user Google Sheets via mcp.oto.ninja, OTO_API_KEY)
+│   │   ├── data.py             # Datastore (tableaux PostgreSQL via mcp.oto.ninja, OTO_API_KEY)
 │   │   ├── ninja.py            # façade mcp.oto.ninja: secrets per-user (LinkedIn/Crunchbase/API keys), OTO_API_KEY
 │   │   └── config.py           # config & secrets management
 │   └── (PLUS de tools/ ni config.py ici — split 2026-06-11) :

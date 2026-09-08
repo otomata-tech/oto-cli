@@ -1,11 +1,11 @@
 """Datastore — stockage de données structurées légères par user.
 
-Backend Google Sheets via le MCP server (`mcp.oto.ninja`). Auth via le
+Backend PostgreSQL via le MCP server (`mcp.oto.ninja`). Auth via le
 secret `OTO_API_KEY` (issu sur `https://oto.ninja/account` ou via le script
 `issue_token.py` côté serveur).
 
-Chaque namespace = un Google Sheet dans le Drive du user. Schéma libre :
-les colonnes apparaissent quand de nouveaux champs sont écrits.
+Chaque namespace = un tableau cloisonné par propriétaire, côté serveur.
+Schéma libre : les colonnes apparaissent quand de nouveaux champs sont écrits.
 
 Exemples :
     oto data namespaces
@@ -25,7 +25,7 @@ from typing import Optional
 
 import typer
 
-app = typer.Typer(help="Datastore — stockage structuré per-user (Google Sheets via MCP)")
+app = typer.Typer(help="Datastore — stockage structuré per-user (PostgreSQL via MCP)")
 
 
 def _client():
@@ -45,19 +45,19 @@ def namespaces():
 
 @app.command("create")
 def create(namespace: str = typer.Argument(..., help="Nom du namespace (kebab-case)")):
-    """Crée un namespace (provisionne le Google Sheet)."""
+    """Crée un namespace (provisionne le tableau)."""
     _print(_client().create_namespace(namespace))
 
 
 @app.command("rm")
 def rm(namespace: str = typer.Argument(...)):
-    """Supprime un namespace (Sheet → corbeille Drive)."""
+    """Supprime un namespace, ses lignes et ses partages — définitif, pas de corbeille."""
     _print(_client().delete_namespace(namespace))
 
 
 @app.command("url")
 def url(namespace: str = typer.Argument(...)):
-    """Affiche l'URL du Google Sheet."""
+    """Affiche l'URL du tableau dans le dashboard."""
     print(_client().url(namespace))
 
 
@@ -135,7 +135,7 @@ def share(
     email: str = typer.Argument(..., help="Email du destinataire (user oto)"),
     permission: str = typer.Option("write", "--permission", "-p", help="'read' ou 'write'"),
 ):
-    """Partage un namespace avec un autre user oto (DB + Google Drive)."""
+    """Partage un namespace avec un autre user oto."""
     _print(_client().share(namespace, email, permission))
 
 
