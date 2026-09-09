@@ -1,0 +1,40 @@
+name: Verrouiller la PR fusionnee
+
+# Ce que faisait l'option `lock-pullrequest-aftermerge` de l'action du CLA,
+# sortie de `cla.yml` le 09/09/2026.
+#
+# Pourquoi la sortir : sur l'event `closed`, l'action du CLA ne verifie AUCUNE
+# signature — elle verrouille la PR et sort en succes, log complet « Locking the
+# Pull Request ». Ce succes se publiait sous le MEME nom de check que la
+# verification (`CLA / cla`), quelques secondes apres la fusion : il devenait le
+# dernier verdict du rollup et effacait le rouge legitime du controle reel. Une
+# PR est ainsi entree sur un depot public avec un CLA vert qui n'avait rien
+# controle (oto-backend#912, 09/09/2026).
+#
+# Le verrouillage garde donc sa fonction, mais sous un nom de check a lui, qui ne
+# peut pas etre lu comme un verdict de CLA. Ce workflow ne verifie rien et ne
+# doit jamais rien affirmer sur le CLA.
+#
+# A quoi sert le verrouillage : la signature se donne par un commentaire dans le
+# fil de la PR ; le verrouillage empeche de le retirer apres la fusion.
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  verrouiller:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verrouiller le fil de la PR fusionnee
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUM: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api --method PUT "repos/$REPO/issues/$NUM/lock" -f lock_reason=resolved
