@@ -13,11 +13,22 @@ name: CLA
 # rien verifier du 03/08 au 03/09/2026, secret absent, et personne ne l'a vu —
 # un controle qui affirme au lieu de verifier est pire que pas de controle.
 
+# Garde-fou (09/09/2026) : ce workflow ne se declenche QUE sur des events qui
+# verifient reellement une signature. Il ecoutait aussi `closed` ; sur cet event
+# l'action ne controle rien — elle verrouille la PR et sort en succes. Ce succes,
+# poste quelques secondes APRES la fusion sous le meme nom de check (`CLA / cla`),
+# devenait le dernier verdict du rollup et effacait le rouge legitime : une PR
+# entrait sur un depot public avec un CLA vert qui n'avait rien controle
+# (oto-backend#912, 09/09/2026). Le verrouillage d'apres-fusion vit desormais
+# dans `cla-lock.yml`, sous un NOM DE CHECK DISTINCT, pour qu'aucun statut vert
+# ne puisse plus etre lu comme un verdict de CLA.
+
 on:
   issue_comment:
     types: [created]
   pull_request_target:
-    types: [opened, synchronize, closed]
+    # PAS de `closed` : voir le garde-fou du 09/09/2026 ci-dessus.
+    types: [opened, synchronize]
 
 permissions:
   actions: write
@@ -36,6 +47,15 @@ jobs:
     env:
       HAS_TOKEN: ${{ secrets.CLA_SIGNATURES_TOKEN != '' && 'true' || 'false' }}
     steps:
+      - name: Event non verificateur — echec volontaire
+        # Ceinture. Si quelqu'un remet un event qui ne verifie aucune signature
+        # dans les declencheurs ci-dessus, ce job ne doit surtout pas publier un
+        # succes vide sous le nom `cla` : il echoue, et le rouge reste lisible.
+        if: github.event_name == 'pull_request_target' && github.event.action != 'opened' && github.event.action != 'synchronize' && github.event.action != 'reopened'
+        run: |
+          echo "::error title=CLA NON VERIFIE::Ce job a ete declenche par l'event '${{ github.event.action }}', qui ne verifie aucune signature. Il echoue plutot que de publier un succes vide sous le nom de check du CLA. Retirer cet event des declencheurs de .github/workflows/cla.yml."
+          exit 1
+
       - name: Jeton de signatures absent — echec volontaire
         if: env.HAS_TOKEN != 'true'
         run: |
