@@ -164,7 +164,8 @@ Passer par `build` + `twine` dans un venv dédié, et builder depuis `git archiv
 le WIP non commité de la release.
 
 ```bash
-# Bump version dans oto/__init__.py, commit + push, puis :
+# Bump `version` dans pyproject.toml — SEUL endroit (pas d'oto/__init__.py depuis le
+# split oto-core, pas de lock) ; commit + push, puis :
 python3 -m venv /tmp/buildenv && /tmp/buildenv/bin/pip install build twine
 rm -rf /tmp/rel && git archive HEAD | tar -x -C /tmp/rel && cd /tmp/rel
 /tmp/buildenv/bin/python -m build
