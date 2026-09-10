@@ -153,7 +153,9 @@ La CLI ne ship plus de skills. Le guidage agent vit dans le **plugin `oto`** (`o
 
 ## Deploy
 
-Push main déclenche `.github/workflows/deploy.yml` qui SSH la **box dédiée `151.115.148.128`** (plus tuls.me), `git reset --hard origin/main` + **`pip install -e .`** (réinstall façade) + `systemctl restart oto-mcp` dans `/opt/deploy/oto-cli.sh`. NB : oto-mcp importe les clients depuis **oto-core**, pas oto-cli — un changement de *client* se propage via oto-core ; oto-cli ne propage que les *commandes* CLI.
+**Un push sur `main` ne déploie rien sur un serveur** (retiré le 10/09/2026). La CLI se distribue par PyPI (ci-dessous). oto-mcp importe ses clients depuis **oto-core**, pas depuis oto-cli : un changement de *client* passe par oto-core ; un changement de *commande* CLI n'a rien à déployer côté serveur.
+
+Pourquoi c'est retiré — ne pas le rétablir : l'ancien `deploy.yml` lançait sur la box du backend un script qui réinstallait oto-cli dans le venv de la prod puis faisait `systemctl restart oto-mcp`. Depuis le bleu/vert du backend (28/08/2026), ce nom désigne l'unité simple d'avant, désactivée : chaque push la réveillait sur le port déjà tenu par la prod, où elle démarrait complètement avec l'environnement de prod, échouait à la liaison du port et se relançait toutes les ~25 s jusqu'au déploiement backend suivant.
 
 ## Release PyPI (rare)
 
