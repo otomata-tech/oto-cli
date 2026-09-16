@@ -19,11 +19,11 @@ python3 -m venv /tmp/buildenv && /tmp/buildenv/bin/pip install build twine
 rm -rf /tmp/rel && mkdir -p /tmp/rel && git archive HEAD | tar -x -C /tmp/rel && cd /tmp/rel
 /tmp/buildenv/bin/python -m build
 TWINE_USERNAME=__token__ \
-TWINE_PASSWORD="$(sops --decrypt --extract '["PYPI_TOKEN"]' ~/.otomata/secrets/secrets.yaml)" \
+TWINE_PASSWORD="$(op read 'op://oto/PyPI publication oto-core et oto-cli/credential')" \
   /tmp/buildenv/bin/twine upload dist/*
 gh release create vX.Y.Z --generate-notes dist/*
 ```
 
-⚠️ **`PYPI_TOKEN` n'existe qu'en SOPS**, qui est déprécié et en lecture seule (le coffre de référence
-est 1Password, vérifié : aucun item PyPI dans le coffre `oto`). La lecture ci-dessus marche encore ;
-la **migration du jeton vers 1Password reste à faire** — cf. `/data/infra/docs/secrets.md`.
+Le jeton vit dans **1Password**, coffre `oto`, item « PyPI publication oto-core et oto-cli »
+(migré depuis SOPS le 16/09/2026). La copie SOPS existe encore en lecture seule et n'est plus la
+référence — cf. `/data/infra/docs/secrets.md`.
